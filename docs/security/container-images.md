@@ -1,0 +1,5 @@
+# Container image inventory
+
+PostgreSQLの採用は決定済みですが、この環境にはDockerがないためimageはまだ導入していません。
+
+ローカルcomposeを追加するときは、PostgreSQL公式imageのversion tagとdigestを記録し、起動・migration・永続volumeを検証します。

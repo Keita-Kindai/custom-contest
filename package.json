@@ -1,0 +1,17 @@
+{
+  "name": "custom-contest",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": "24.19.0",
+    "pnpm": "11.19.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @custom-contest/web dev",
+    "build": "pnpm --filter @custom-contest/web build",
+    "lint": "pnpm --filter @custom-contest/web lint",
+    "typecheck": "pnpm --filter @custom-contest/web typecheck",
+    "test": "pnpm -r --if-present test",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  }
+}

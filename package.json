@@ -9,9 +9,19 @@
   "scripts": {
     "dev": "pnpm --filter @custom-contest/web dev",
     "build": "pnpm --filter @custom-contest/web build",
+    "start": "pnpm --filter @custom-contest/web start",
     "lint": "pnpm --filter @custom-contest/web lint",
-    "typecheck": "pnpm --filter @custom-contest/web typecheck",
-    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test --config apps/web/playwright.config.ts",
+    "db:migrate": "pnpm --filter @custom-contest/web db:migrate",
+    "userscript:build": "pnpm --filter @custom-contest/userscript build",
+    "problems:generate": "node scripts/generate-problem-pool.mjs",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "vitest": "5.0.0"
   }
 }

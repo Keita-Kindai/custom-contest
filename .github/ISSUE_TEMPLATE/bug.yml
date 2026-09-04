@@ -1,0 +1,37 @@
+name: Bug report
+description: 再現可能な不具合を記録します
+title: "[Bug]: "
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 何が起きましたか
+      description: 専門用語だけでなく、画面上で見えたことも説明してください。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待した動作
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 環境
+      description: OS、browser、Node/pnpm、userscript version、LAN/localhostの別を書いてください。
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs / screenshots
+      description: token、cookie、`.env.local`、不要な個人情報を消してから添付してください。

@@ -2,23 +2,30 @@
   "name": "@custom-contest/web",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/migrate.ts"
   },
   "dependencies": {
     "@custom-contest/contracts": "workspace:*",
+    "@custom-contest/domain": "workspace:*",
+    "drizzle-orm": "0.45.2",
     "next": "16.3.4",
+    "pg": "8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@types/node": "20.19.43",
+    "@types/pg": "8.23.1",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
+    "drizzle-kit": "0.31.10",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.4",
     "typescript": "5.9.3"

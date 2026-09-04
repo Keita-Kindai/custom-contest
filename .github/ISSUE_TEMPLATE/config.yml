@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security-sensitive report
+    url: https://github.com/Keita-Kindai/custom-contest/security/advisories/new
+    about: Tokenや個人情報を通常の公開Issueへ貼らず、非公開で報告してください。

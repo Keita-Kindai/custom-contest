@@ -13,10 +13,10 @@
 ## 最初にGrillする順序
 
 1. `0001-mvp-boundary.md`: Fake ACを含む最初の縦切り
-2. `0002-realtime-transport.md`: Socket.IOまたはWebSocket
-3. `0003-room-authority.md`: Room状態の正本と永続化
-4. `0004-submission-evidence.md`: userscript通知契約と検証
-5. `0005-database-access.md`: DrizzleまたはPrisma
-6. `0006-test-strategy.md`: unit / integration / E2Eの境界
+2. `0002-realtime-transport.md`: HTTP polling、Socket.IO、WebSocket
+3. `0003-room-authority.md`: Room状態の正本、ブラウザーの責任、永続化
+4. `0004-submission-evidence.md`: userscript通知契約、検証、再送、信頼境界
+5. `0005-database-access.md`: Drizzle、Prisma、直接SQLと結果保持
+6. `0006-test-strategy.md`: Vitest、Playwright、実AtCoder手動確認の境界
 
 `0000-template.md` を複製し、根拠となる測定、公式文書、再検討条件を残します。

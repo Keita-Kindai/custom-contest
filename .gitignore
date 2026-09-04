@@ -3,6 +3,8 @@ node_modules/
 out/
 dist/
 coverage/
+test-results/
+playwright-report/
 *.tsbuildinfo
 
 .env
@@ -12,3 +14,8 @@ coverage/
 
 .DS_Store
 *.log
+
+# Local agent/design-tool state and distilled scratch notes
+.agents/skills/
+.hallmark/
+memo.md

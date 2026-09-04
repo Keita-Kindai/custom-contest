@@ -18,10 +18,25 @@
 ADR-0007で確定済み。
 
 - primitive共有の2 skin。精進=light + 橙accent、対戦=現行のdark + 緑accentを維持
-- 作成は13章（Problemsを検索して1問ずつ追加）を正とする。条件生成は採らない
+- 作成は13章（Problemsを検索して1問ずつ追加）を正とする。12章の条件生成は採らない
 - この段階でPostgreSQLを使わない。repository interfaceの背後をfixtureとブラウザー内保存で満たす
 - トップ`/`と対戦側の画面には手を入れない
 - Difficulty色は灰・茶・緑・水・青・紫の6段。橙はbrand accentと競合するため使わない
+
+## 触らないファイル
+
+対戦側はCodexの担当で、日曜デモの対象。次を変更しない。
+
+- `apps/web/src/app/page.tsx`
+- `apps/web/src/app/_components/**`（`app-shell` / `battle-room` / `match-result` / 各form / `recent-matches`）
+- `apps/web/src/app/battle/**`
+- `apps/web/src/app/api/rooms/**`, `api/userscript/**`, `api/dev/**`, `api/health/**`, `api/matches/**`
+- `apps/web/src/server/**`
+- `packages/domain/src/room/**`
+
+`apps/web/tokens.css`は既存の変数を消さず、skin用の定義を追記する形でだけ触る。
+
+精進側のAPIは`apps/web/src/app/api/problems/`へ新しく作った。対戦側のrouteには触れていない。
 
 ## Files changed
 
@@ -39,11 +54,11 @@ ADR-0007で確定済み。
 変更。
 
 - `packages/contracts/src/index.ts`, `packages/domain/src/index.ts`: re-export追加
-- `apps/web/tokens.css`: `[data-skin="practice"]`のlight skinを**追記**（既存のdark定義は変更なし）
+- `apps/web/tokens.css`: `[data-skin="practice"]`のlight skinを追記（既存のdark定義は変更なし）
 - `docs/design/open-questions.md`: DESIGN-071〜082
 - `docs/ai/handoffs/README.md`
 
-対戦側のファイルは変更していない。`git diff --stat`に`page.tsx`、`app-shell.tsx`、`battle-*`、`api/rooms`、`api/userscript`、`server/**`、`domain/src/room/**`が出ないことで確認できる。
+対戦側のファイルは変更していない。`git status`に`page.tsx`、`app-shell`、`battle*`、`api/rooms`、`api/userscript`、`server/**`、`domain/src/room/**`が出ないことで確認した。
 
 ## 実装した画面
 
@@ -58,11 +73,13 @@ ADR-0007で確定済み。
 
 ## 設計上の判断
 
-**カタログをserver側に置いた理由**: 3295問で約470KB あり、clientへ丸ごと配ると初期読み込みが重い。Route Handlerで検索し、上位20件だけ返す。DB導入時はこのhandlerの中だけをSQLへ差し替える。
+**カタログをserver側に置いた理由**: 3295問で約470KBあり、clientへ丸ごと配ると初期読み込みが重い。Route Handlerで検索し、上位20件だけ返す。DB導入時はこのhandlerの中だけをSQLへ差し替える。
 
-**CSSのclass名を`ps-`で始めた理由**: `globals.css`（対戦側）と`.difficulty`、`.field-label`、`.field-help`、`.section-heading`、`.section-note`が衝突し、実際に詳細画面のDifficulty表示が入力欄のような枠付きで描画された。衝突した5つを`ps-`付きへ改名して解消済み。今後精進側へclassを足すときも`ps-`または`practice-`で始める。
+**CSSのclass名を`ps-`で始めた理由**: `globals.css`（対戦側）と`.difficulty`、`.field-label`、`.field-help`、`.section-heading`、`.section-note`が衝突し、実際にセット詳細のDifficulty表示が入力欄のような枠付きで描画された。衝突した5つを`ps-`付きへ改名して解消済み。今後精進側へclassを足すときも`ps-`または`practice-`で始めること。
 
-**Difficultyがない問題**: EDPC・典型90・鉄則はratedでないため推定値がない。ABC001など古い回は`is_experimental`。どちらも「—」を出し、セット単位では「目安なし」と表示する。除外はしない。
+**Difficultyがない問題**: EDPC・典型90・鉄則はratedでないため推定値がない。ABC001など古い回は`is_experimental`。あわせて788問。どちらも「—」を出し、セット単位では「目安なし」と表示する。検索対象からは外さない。
+
+**カタログの既定の並び**: 検索語なしで開いたときに新しいABCが先に出るようにした。古い回はDifficultyが伏せられることが多く、先頭に出ても選びにくいため。
 
 ## Verification run
 
@@ -75,12 +92,12 @@ ADR-0007で確定済み。
 - いいね・ブックマークがマイページの件数へ反映されることを確認
 - 下書きがDiscoverへ出ず、マイページの「作成したセット」にだけ出ることを確認
 - console errorなし
-- `/`と`/battle/new`が従来どおりdark skinで表示され、精進側のtoken追加による影響がないことを確認
+- `/`と`/battle/new`が従来どおりdark skinで表示され、token追加による影響がないことを確認
 
 ## Open questions
 
 - DESIGN-074〜080: 認証、限定公開リンクの失効、いいね数の可視範囲、公開停止、複製時の公開範囲、pool統合、モバイル対応
-- DESIGN-081: 作成をステップ式にするか1画面のままにするか。13章が「ステップ数の最終形は次のラウンドで確定」としている
+- DESIGN-081: 作成をステップ式にするか1画面のままにするか。13章が「ステップ数の最終形は次のラウンドで確定」としているため、現状はモックどおり1画面
 - DESIGN-082: `is_experimental`のDifficultyを表示するか伏せるか
 
 いずれも画面は動くが、実際の制御はDBと認証の導入まで効かない。

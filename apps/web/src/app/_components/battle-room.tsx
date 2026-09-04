@@ -234,6 +234,7 @@ export function BattleRoom({ roomId }: { roomId: string }) {
   const selfSubmissions = match?.submissions.filter((entry) => entry.seat === snapshot?.viewerSeat) ?? [];
   const selfLatest = selfSubmissions.at(-1);
   const opponentName = snapshot?.opponent?.atcoderId ?? "待機中…";
+  const isFakeOpponent = snapshot?.opponent?.kind === "fake";
   const isHost = snapshot?.viewerSeat === "host";
   const disabled = busy !== null || reconnecting;
   const startHoldActive = snapshot?.view === "live" && clock < startHoldUntil;
@@ -304,8 +305,8 @@ export function BattleRoom({ roomId }: { roomId: string }) {
                 <h2>{snapshot.self.atcoderId}</h2><p>{snapshot.self.script.hint ?? "AtCoder接続を確認済み"}</p><strong className="ready-state">{snapshot.self.ready ? "✓ READY" : "READY前"}</strong>
               </article>
               <article className={`player-slot opponent-slot ${snapshot.opponent?.ready ? "is-ready" : ""} ${!snapshot.opponent ? "is-empty" : ""}`}>
-                <div className="slot-top"><span className="player-tag opponent-tag">OPP</span><span>{isHost ? "INVITEE" : "HOST"}</span></div>
-                <h2>{opponentName}</h2><p>{snapshot.opponent ? snapshot.opponent.script.hint ?? "AtCoder接続を確認済み" : "招待URLまたはRoom IDを共有してください"}</p><strong className="ready-state">{snapshot.opponent ? snapshot.opponent.ready ? "✓ READY" : "READY前" : "空席"}</strong>
+                <div className="slot-top"><span className="player-tag opponent-tag">OPP</span><span>{isFakeOpponent ? "TEST" : isHost ? "INVITEE" : "HOST"}</span></div>
+                <h2>{opponentName}</h2><p>{isFakeOpponent ? "テスト専用。AtCoderへの接続や提出は行いません。" : snapshot.opponent ? snapshot.opponent.script.hint ?? "AtCoder接続を確認済み" : "招待URLまたはRoom IDを共有してください"}</p><strong className="ready-state">{snapshot.opponent ? snapshot.opponent.ready ? "✓ READY" : "READY前" : "空席"}</strong>
               </article>
             </section>
 
@@ -322,7 +323,8 @@ export function BattleRoom({ roomId }: { roomId: string }) {
             </div>
 
             <div className="action-row">
-              {isHost && snapshot.opponent && <button className="compact-button" type="button" disabled={disabled || !snapshot.canReleaseInviteeSeat} onClick={() => { if (window.confirm("Inviteeの席を空けますか？ 相手は同じ参加者キーで戻れなくなります。")) void mutate("leave", { action: "release_invitee_seat" }); }}>Inviteeの席を空ける</button>}
+              {isHost && snapshot.fakeEvidenceEnabled && !snapshot.opponent && <button className="compact-button" type="button" disabled={disabled} onClick={() => void mutate("fake-opponent")}>{busy === "fake-opponent" ? "追加中…" : "テスト相手を追加"}</button>}
+              {isHost && snapshot.opponent && <button className="compact-button" type="button" disabled={disabled || !snapshot.canReleaseInviteeSeat} onClick={() => { if (window.confirm(isFakeOpponent ? "テスト相手を外しますか？" : "Inviteeの席を空けますか？ 相手は同じ参加者キーで戻れなくなります。")) void mutate("leave", { action: "release_invitee_seat" }); }}>{isFakeOpponent ? "テスト相手を外す" : "Inviteeの席を空ける"}</button>}
               {isHost
                 ? <button className="compact-button" type="button" disabled={disabled} onClick={() => { if (window.confirm("このRoomを閉じますか？ 相手もRoomへ戻れなくなります。")) void mutate("leave", { action: "close_room" }); }}>Roomを閉じる</button>
                 : <button className="compact-button" type="button" disabled={disabled} onClick={() => void leaveInviteeSeat()}>Roomから退出</button>}
@@ -361,7 +363,7 @@ export function BattleRoom({ roomId }: { roomId: string }) {
                 </div>
 
                 <aside className="battle-sidebar">
-                  <section className="opponent-panel"><div className="opponent-title"><span className="opponent-light" aria-hidden="true" /><strong>{opponentName}</strong><span>OPPONENT</span></div><dl className="opponent-stats"><div><dt>提出</dt><dd>{match.opponent.submissionCount}</dd></div><div><dt>ミス</dt><dd>{match.opponent.missCount}</dd></div><div><dt>待ち</dt><dd>{match.opponent.pendingCount}</dd></div></dl><p className="fine-print">対戦中は相手の正確な提出時刻と言語を表示しません。</p></section>
+                  <section className="opponent-panel"><div className="opponent-title"><span className="opponent-light" aria-hidden="true" /><strong>{opponentName}</strong><span>{isFakeOpponent ? "TEST OPPONENT" : "OPPONENT"}</span></div><dl className="opponent-stats"><div><dt>提出</dt><dd>{match.opponent.submissionCount}</dd></div><div><dt>ミス</dt><dd>{match.opponent.missCount}</dd></div><div><dt>待ち</dt><dd>{match.opponent.pendingCount}</dd></div></dl><p className="fine-print">{isFakeOpponent ? "テスト相手は提出しません。あなたの実提出の判定経路を確認できます。" : "対戦中は相手の正確な提出時刻と言語を表示しません。"}</p></section>
                   {snapshot.fakeEvidenceEnabled && snapshot.view !== "decided" && <details className="demo-controls"><summary>デモ操作</summary><p>自分のFake提出だけを送ります。実際の勝敗と同じくサーバーが確定します。</p><div className="demo-verdicts"><button className="compact-button" type="button" disabled={disabled} onClick={() => fakeSubmission("pending")}>WJ</button>{["WA", "TLE", "RE", "AC"].map((verdict) => <button className="compact-button" type="button" disabled={disabled} key={verdict} onClick={() => fakeSubmission("final", verdict)}>{verdict}</button>)}</div></details>}
                   {snapshot.canForfeit && <section className="forfeit-block"><h2>対戦を終了する</h2><p>棄権すると相手の勝利として結果に残ります。</p><button className="button button-danger" type="button" disabled={disabled} onClick={() => forfeitDialog.current?.showModal()}>棄権する</button></section>}
                 </aside>

@@ -3,6 +3,7 @@ import {
   atcoderIdSchema,
   evidenceSourceSchema,
   matchIdSchema,
+  participantKindSchema,
   roomIdSchema,
   roomSettingsSchema,
   seatSchema,
@@ -104,6 +105,7 @@ export type ScriptHealth = z.infer<typeof scriptHealthSchema>;
 
 export const participantViewSchema = z.object({
   seat: seatSchema,
+  kind: participantKindSchema,
   atcoderId: atcoderIdSchema,
   ready: z.boolean(),
   /** 直近のRoom snapshot取得が新しいか。切断でも席は残る。 */

@@ -80,6 +80,7 @@ export function createRoom(
 ): { room: RoomState; participant: ParticipantState } {
   const host: ParticipantState = {
     seat: "host",
+    kind: "human",
     participantKey: newParticipantKey(ctx.random),
     atcoderId: hostAtcoderId,
     ready: false,
@@ -147,6 +148,7 @@ export function joinRoom(
 
   const invitee: ParticipantState = {
     seat: "invitee",
+    kind: "human",
     participantKey: newParticipantKey(ctx.random),
     atcoderId: input.atcoderId,
     ready: false,
@@ -161,6 +163,50 @@ export function joinRoom(
   return { ok: true, participant: invitee };
 }
 
+/**
+ * 開発・LANデモ専用のテスト相手をInvitee席へ追加する。
+ * AtCoderへ接続せず、提出もしない。Host本人の実提出経路を一人で検証するための相手。
+ */
+export function addFakeOpponent(
+  room: RoomState,
+  participantKey: string,
+  ctx: CommandContext,
+): Result<{ participant: ParticipantState }> {
+  if (!ctx.fakeEvidenceEnabled) {
+    return fail("fake_evidence_disabled", "テスト相手はこのサーバーでは無効です。", null);
+  }
+  const participant = findByParticipantKey(room, participantKey);
+  if (!participant) {
+    return fail("not_a_participant", "この操作の権限がありません。", "Roomへ入り直してください。");
+  }
+  if (participant.seat !== "host") {
+    return fail("not_host", "テスト相手を追加できるのはホストだけです。", null);
+  }
+  if (room.closed) return fail("room_closed", "このRoomは終了しています。", null);
+  if (room.match !== null) {
+    return fail("invalid_state", "テスト相手は新しい対戦の待機中だけ追加できます。", null);
+  }
+  if (room.participants.invitee) {
+    return fail("room_full", "このRoomの席は埋まっています。", "先にInviteeの席を空けてください。");
+  }
+
+  const fake: ParticipantState = {
+    seat: "invitee",
+    kind: "fake",
+    participantKey: newParticipantKey(ctx.random),
+    atcoderId: "FAKE_RIVAL",
+    ready: true,
+    joinedAt: ctx.now,
+    lastSeenAt: ctx.now,
+    script: null,
+    pendingLinkKey: null,
+    notices: [],
+  };
+  room.participants.invitee = fake;
+  bump(room, ctx.now);
+  return { ok: true, participant: fake };
+}
+
 /** snapshot取得のたびに呼び、在室表示を更新する。 */
 export function touch(room: RoomState, participant: ParticipantState, now: number): void {
   participant.lastSeenAt = now;
@@ -168,7 +214,7 @@ export function touch(room: RoomState, participant: ParticipantState, now: numbe
 }
 
 export function appConnected(participant: ParticipantState, now: number): boolean {
-  return now - participant.lastSeenAt <= APP_CONNECTION_TIMEOUT_MS * 2;
+  return participant.kind === "fake" || now - participant.lastSeenAt <= APP_CONNECTION_TIMEOUT_MS * 2;
 }
 
 // --- userscript接続 -----------------------------------------------------------
@@ -198,6 +244,7 @@ export function readyBlockReason(
   }
   const opponent = room.participants[OPPONENT_SEAT[participant.seat]];
   if (!opponent) return "相手の参加を待っています。招待URLまたはRoom IDを共有してください。";
+  if (participant.kind === "fake") return null;
   const script = participant.script;
   if (!script) return "AtCoderと接続してください。「AtCoderと接続」からuserscriptを紐づけます。";
   if (!scriptFresh(participant, now)) {
@@ -415,7 +462,7 @@ export function cancelStart(room: RoomState, participantKey: string, ctx: Comman
   // 出題済み扱いにしない。中止したMatchは残さない。
   room.usedProblemIds = room.usedProblemIds.filter((id) => id !== room.match?.problem.problemId);
   room.match = null;
-  for (const each of bothParticipants(room)) each.ready = false;
+  for (const each of bothParticipants(room)) each.ready = each.kind === "fake";
   bump(room, ctx.now);
   return { ok: true };
 }
@@ -440,7 +487,7 @@ function decide(
     ...room.finishedMatches,
   ].slice(0, 20);
   room.rematch = null;
-  for (const participant of bothParticipants(room)) participant.ready = false;
+  for (const participant of bothParticipants(room)) participant.ready = participant.kind === "fake";
   bump(room, now);
 }
 
@@ -824,6 +871,11 @@ export function rematch(
   if (blocked) return fail("rematch_blocked", blocked, null);
 
   if (action === "request") {
+    const opponent = room.participants[OPPONENT_SEAT[participant.seat]];
+    if (opponent?.kind === "fake") {
+      completeRematch(room, ctx.now);
+      return { ok: true };
+    }
     if (room.rematch && room.rematch.requestedBy !== participant.seat) {
       // 相手の申し込みへの再申し込みは承認として扱う。
       return rematch(room, participantKey, "accept", ctx);
@@ -837,13 +889,17 @@ export function rematch(
     return fail("invalid_state", "相手からの再戦申し込みがありません。", null);
   }
 
+  completeRematch(room, ctx.now);
+  return { ok: true };
+}
+
+function completeRematch(room: RoomState, now: number): void {
   // 同じRoomと条件のまま待機へ戻す。遅着evidenceと再保存のため実体も保持する。
   if (room.match) room.archivedMatches = [room.match, ...room.archivedMatches].slice(0, 20);
   room.match = null;
   room.rematch = null;
-  for (const each of bothParticipants(room)) each.ready = false;
-  bump(room, ctx.now);
-  return { ok: true };
+  for (const each of bothParticipants(room)) each.ready = each.kind === "fake";
+  bump(room, now);
 }
 
 // --- 保存状態 -------------------------------------------------------------------------

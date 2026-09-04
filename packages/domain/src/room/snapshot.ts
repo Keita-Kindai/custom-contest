@@ -59,6 +59,7 @@ function toParticipantView(
 
   return {
     seat: participant.seat,
+    kind: participant.kind,
     atcoderId: participant.atcoderId,
     ready: participant.ready,
     appConnected: appConnected(participant, now),

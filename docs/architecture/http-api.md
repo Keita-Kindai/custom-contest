@@ -17,6 +17,7 @@
 | POST | `/api/rooms/[roomId]/rematch` | 再戦の申込・承認・取消 |
 | POST | `/api/rooms/[roomId]/leave` | 退出・Room終了・Invitee席解放 |
 | POST | `/api/rooms/[roomId]/link-key` | userscript用の一回限り接続キー発行 |
+| POST | `/api/rooms/[roomId]/fake-opponent` | LAN demo/test限定。Hostが空席へ提出しないテスト相手を追加 |
 | POST | `/api/dev/fake-evidence` | LAN demo/test限定の本人Fake提出 |
 | POST | `/api/userscript/link` | 接続キーをRoom/Participant限定tokenへ交換 |
 | POST | `/api/userscript/heartbeat` | login ID・判定先の健全性とactive Matchを同期 |
@@ -25,6 +26,8 @@
 | GET | `/api/health` | DB、migration、問題pool、Fake受付の状態 |
 
 request/response/errorのruntime schemaは`packages/contracts`を正本とします。userscriptの3 endpointだけはAtCoder origin向けCORS headerを返しますが、実際の認可は一回限りの接続キーと専用tokenで行います。
+
+`/fake-opponent`は`CUSTOM_CONTEST_ENABLE_FAKE_EVIDENCE=1`または自動テスト時だけ有効です。Host本人の参加者キーを検査し、RoomがMatch開始前かつInvitee空席の場合だけ`FAKE_RIVAL`を自動READYで追加します。テスト相手はAtCoder接続、heartbeat、提出を一切行いません。Host側のREADY条件と実提出の検査は通常どおり維持します。
 
 PostgreSQLへ初めて接続した時と、その後24時間以上経過した最初のDB access時に、`expires_at`を過ぎたMatchを削除します。結果取得時にも同じcleanupを通るため、期限切れの結果URLから提出履歴が再表示されることはありません。
 

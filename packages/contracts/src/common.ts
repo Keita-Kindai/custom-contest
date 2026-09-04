@@ -4,6 +4,10 @@ import { z } from "zod";
 export const seatSchema = z.enum(["host", "invitee"]);
 export type Seat = z.infer<typeof seatSchema>;
 
+/** 実際の参加者か、開発・LANデモ専用のテスト相手か。 */
+export const participantKindSchema = z.enum(["human", "fake"]);
+export type ParticipantKind = z.infer<typeof participantKindSchema>;
+
 export const OPPONENT_SEAT: Record<Seat, Seat> = {
   host: "invitee",
   invitee: "host",

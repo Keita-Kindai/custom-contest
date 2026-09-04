@@ -7,6 +7,7 @@ import { POST as evidencePost } from "../../app/api/userscript/evidence/route";
 import { POST as heartbeatPost } from "../../app/api/userscript/heartbeat/route";
 import { POST as linkPost } from "../../app/api/userscript/link/route";
 import { POST as joinPost } from "../../app/api/rooms/[roomId]/join/route";
+import { POST as fakeOpponentPost } from "../../app/api/rooms/[roomId]/fake-opponent/route";
 import { GET as roomGet } from "../../app/api/rooms/[roomId]/route";
 import { POST as readyPost } from "../../app/api/rooms/[roomId]/ready/route";
 import { POST as startPost } from "../../app/api/rooms/[roomId]/start/route";
@@ -112,6 +113,26 @@ describe("Room Route Handlers", () => {
       const body = (await response.json()) as SnapshotResponse;
       expect(body.snapshot.match?.result).toMatchObject({ outcome: "win", winnerSeat: "invitee" });
     }
+  });
+
+  it("lets the host fill an empty seat with a test-only opponent", async () => {
+    const { room, participant: host } = roomStore().create(
+      { mode: "BO1", limitMinutes: 10, problemIndexes: ["C", "D"], difficultyMin: 400, difficultyMax: 1200 },
+      "Litms",
+      commandContext(),
+    );
+    const response = await fakeOpponentPost(
+      post(`http://localhost/api/rooms/${room.roomId}/fake-opponent`, {
+        participantKey: host.participantKey,
+      }),
+      routeContext(room.roomId),
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()) as SnapshotResponse).toMatchObject({
+      snapshot: {
+        opponent: { atcoderId: "FAKE_RIVAL", kind: "fake", ready: true },
+      },
+    });
   });
 
   it("returns a readable validation error instead of accepting malformed JSON", async () => {

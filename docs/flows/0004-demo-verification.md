@@ -27,4 +27,14 @@ flowchart TD
 7. 短時間の通信切断後に再送と最新snapshotへの復帰を確認する。
 8. server再起動後、限定公開Match URLで保存結果を再表示する。
 
+## 一人で実提出経路を確認する
+
+1. `.env.local`で`CUSTOM_CONTEST_ENABLE_FAKE_EVIDENCE=1`を有効にしてserverを起動する。
+2. HostとしてRoomを作り、空席の状態で「テスト相手を追加」を押す。
+3. `FAKE_RIVAL`が`TEST`・`READY`として表示されることを確認する。
+4. Host自身は通常どおり「AtCoderと接続」を行い、READYにしてMatchを開始する。
+5. 対象問題へ実際に提出し、userscriptが送ったPending・最終判定と勝利表示を確認する。
+
+テスト相手はAtCoderへrequestせず、提出もしません。相手側の提出挙動を試す場合は従来どおり2台目または自分のFake提出操作を使います。
+
 実AtCoderデータは`Litms`およびその場で明示的に許可された友人の提出だけを使い、ソースコード本文は取得・保存しません。

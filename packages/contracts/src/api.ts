@@ -142,6 +142,12 @@ export const fakeEvidenceRequestSchema = participantRequestSchema.extend({
 });
 export type FakeEvidenceRequest = z.infer<typeof fakeEvidenceRequestSchema>;
 
+// --- POST /api/rooms/[roomId]/fake-opponent ---------------------------------
+
+/** LAN demo・開発・自動testだけで有効な、ホストによるテスト相手追加。 */
+export const addFakeOpponentRequestSchema = participantRequestSchema;
+export type AddFakeOpponentRequest = z.infer<typeof addFakeOpponentRequestSchema>;
+
 // --- GET /api/matches/[matchId] ----------------------------------------------
 
 export const storedMatchResponseSchema = z.object({

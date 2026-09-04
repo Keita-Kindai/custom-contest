@@ -3,6 +3,7 @@ import type {
   MatchPhase,
   MatchReason,
   MatchOutcome,
+  ParticipantKind,
   Problem,
   RoomClosedReason,
   RoomSettings,
@@ -37,6 +38,7 @@ export type PendingLinkKey = {
 
 export type ParticipantState = {
   seat: Seat;
+  kind: ParticipantKind;
   participantKey: string;
   atcoderId: string;
   ready: boolean;

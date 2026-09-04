@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { OUTBOX_RETENTION_AFTER_MATCH_MS, type RoomSettings } from "@custom-contest/contracts";
 import type { RandomSource } from "../random";
 import {
+  addFakeOpponent,
   createRoom,
   forfeit,
   heartbeat,
@@ -109,6 +110,94 @@ function evidenceFor(
 }
 
 describe("BO1 room commands", () => {
+  it("adds a ready test opponent without bypassing the host userscript check", () => {
+    const random = deterministicRandom();
+    const now = Date.parse("2026-09-06T01:00:00.000Z");
+    const ctx = { now, random, fakeEvidenceEnabled: true };
+    const created = createRoom(settings, "Litms", ctx, "ABC234");
+
+    const added = addFakeOpponent(created.room, created.participant.participantKey, ctx);
+    expect(added.ok && added.participant).toMatchObject({
+      seat: "invitee",
+      kind: "fake",
+      atcoderId: "FAKE_RIVAL",
+      ready: true,
+      script: null,
+    });
+    expect(buildSnapshot(created.room, "host", now, { fakeEvidenceEnabled: true })).toMatchObject({
+      opponent: { kind: "fake", ready: true },
+      canReady: false,
+      readyBlockedReason: expect.stringContaining("AtCoderと接続"),
+    });
+
+    const issued = issueLinkKey(created.room, created.participant.participantKey, ctx);
+    if (!issued.ok) throw new Error(issued.message);
+    const linked = linkScript(
+      created.room,
+      { linkKey: issued.linkKey, loginAtcoderId: "Litms", scriptVersion: "test" },
+      ctx,
+    );
+    if (!linked.ok) throw new Error(linked.message);
+    heartbeat(
+      created.room,
+      {
+        scriptToken: linked.scriptToken,
+        loggedIn: true,
+        loginAtcoderId: "Litms",
+        judgeReachable: true,
+        checkedAt: now,
+      },
+      ctx,
+    );
+    expect(setReady(created.room, created.participant.participantKey, true, ctx).ok).toBe(true);
+    const started = startMatch(created.room, created.participant.participantKey, ctx);
+    if (!started.ok) throw new Error(started.message);
+
+    const liveCtx = { ...ctx, now: started.match.startsAt + 1_000 };
+    tick(created.room, liveCtx.now);
+    const submitted = submitEvidence(
+      created.room,
+      {
+        participantKey: created.participant.participantKey,
+        matchId: started.match.matchId,
+        submissions: [
+          {
+            atcoderId: "Litms",
+            submissionId: 12345678,
+            contestId: started.match.problem.contestId,
+            problemId: started.match.problem.problemId,
+            submittedAt: liveCtx.now,
+            status: "final",
+            verdict: "AC",
+            language: "C++ 23",
+            source: "atcoder",
+          },
+        ],
+      },
+      liveCtx,
+    );
+    expect(submitted.ok).toBe(true);
+    expect(started.match.result).toMatchObject({ outcome: "win", winnerSeat: "host" });
+
+    markPersisted(created.room, started.match.matchId, liveCtx.now);
+    expect(rematch(created.room, created.participant.participantKey, "request", liveCtx).ok).toBe(true);
+    expect(created.room.match).toBeNull();
+    expect(created.room.participants.invitee).toMatchObject({ kind: "fake", ready: true });
+  });
+
+  it("rejects a test opponent when fake features are disabled", () => {
+    const random = deterministicRandom();
+    const now = Date.parse("2026-09-06T01:00:00.000Z");
+    const created = createRoom(settings, "Litms", { now, random, fakeEvidenceEnabled: false }, "ABC234");
+    expect(
+      addFakeOpponent(created.room, created.participant.participantKey, {
+        now,
+        random,
+        fakeEvidenceEnabled: false,
+      }),
+    ).toMatchObject({ ok: false, code: "fake_evidence_disabled" });
+  });
+
   it("keeps the problem secret until START and then exposes it", () => {
     const fixture = preparedRoom();
     expect(buildSnapshot(fixture.room, "host", fixture.match.startsAt - 1, { fakeEvidenceEnabled: true }).match?.problem).toBeNull();

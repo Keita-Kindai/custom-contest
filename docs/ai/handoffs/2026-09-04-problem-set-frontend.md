@@ -10,81 +10,92 @@
 
 - `design_handoff_ac_duel_bo1/Custom Contest 問題セットUX Phase1.dc.html`
 - `docs/decisions/0007-problem-set-frontend-boundary.md`
-- `docs/design/open-questions.md` の DESIGN-071〜080
-- 既存の`apps/web/tokens.css`（primitive層を再利用する）
+- `docs/design/open-questions.md` の DESIGN-071〜082
+- 既存の`apps/web/tokens.css`（primitive層を再利用）
 
 ## Decisions already made
 
 ADR-0007で確定済み。
 
 - primitive共有の2 skin。精進=light + 橙accent、対戦=現行のdark + 緑accentを維持
-- 作成ウィザードは13章（Problemsを検索して1問ずつ追加）を正とする。12章の条件生成は採らない
+- 作成は13章（Problemsを検索して1問ずつ追加）を正とする。条件生成は採らない
 - この段階でPostgreSQLを使わない。repository interfaceの背後をfixtureとブラウザー内保存で満たす
-- トップ`/`と対戦側の画面には手を入れない。`/discover`、`/sets/*`、`/library`を独立した入口にする
-- Difficulty色は灰・茶・緑・水・青・紫の6段。橙はbrand accentと競合するため使わない。色ドット・数値・色名を必ず併記する
-
-## 触らないファイル
-
-対戦側はCodexの担当で、日曜デモの対象。次を変更しない。
-
-- `apps/web/src/app/page.tsx`
-- `apps/web/src/app/_components/app-shell.tsx`
-- `apps/web/src/app/_components/battle-room.tsx`
-- `apps/web/src/app/_components/match-result.tsx`
-- `apps/web/src/app/_components/create-room-form.tsx` / `join-room-form.tsx` / `profile-card.tsx` / `recent-matches.tsx`
-- `apps/web/src/app/battle/**`
-- `apps/web/src/app/api/**`
-- `apps/web/src/server/**`
-- `packages/domain/src/room/**`
-
-`apps/web/tokens.css`は既存の変数を消さず、skin用の定義を追加する形でだけ触る。
-
-## 予定している配置
-
-```
-apps/web/src/app/
-  discover/page.tsx                精explore・検索・フィルター
-  sets/new/page.tsx                作成ウィザード（?step=1..5）
-  sets/[setId]/page.tsx            セット詳細
-  sets/[setId]/edit/page.tsx       ウィザード再利用
-  library/page.tsx                 ?tab=created|bookmarked|liked|recent
-  _practice/                       精進側のshellとcomponent（対戦側と分ける）
-apps/web/src/server/sets/          repository interfaceとfixture実装
-packages/contracts/src/problem-set.ts   Zod schema
-```
-
-URLの持ち方はデザインの2章に従う。ウィザードは`?step=`、ライブラリは`?tab=`と`?visibility=`で状態を持ち、リロードと戻るで復元できるようにする。
-
-## 予定している順序
-
-1. `packages/contracts`に問題セットのZod schemaを足す
-2. skin token（light + 橙、Difficulty 6色）を`tokens.css`へ追加する
-3. repository interfaceとfixture実装
-4. 検索用の問題fixtureを`scripts/generate-problem-pool.mjs`と同じ方式で生成する（範囲を広げる）
-5. Discover
-6. セット詳細
-7. 作成ウィザード（13章の検索して追加する構成）
-8. ライブラリ
+- トップ`/`と対戦側の画面には手を入れない
+- Difficulty色は灰・茶・緑・水・青・紫の6段。橙はbrand accentと競合するため使わない
 
 ## Files changed
 
-（未着手）ADRとopen questionsの記録のみ。
+新規。
 
-- `docs/decisions/0007-problem-set-frontend-boundary.md`（新規）
-- `docs/design/open-questions.md`（DESIGN-071〜080を追加）
-- `docs/ai/handoffs/2026-09-04-problem-set-frontend.md`（この文書）
+- `packages/contracts/src/problem-set.ts`: 問題セット、カタログ、検索、Difficulty帯のZod schemaと定数
+- `packages/domain/src/problem-catalog.ts`: 固定カタログの読み込みと検索（server専用）
+- `packages/domain/src/problems/catalog.json`: 生成物。3295問・約470KB
+- `scripts/generate-problem-catalog.mjs`: カタログ生成
+- `apps/web/src/app/api/problems/search/route.ts`: 検索endpoint
+- `apps/web/src/app/_practice/`: shell、CSS、components、repository、fixture、4画面のview
+- `apps/web/src/app/discover/`, `library/`, `sets/new/`, `sets/[setId]/`, `sets/[setId]/edit/`: route
+- `docs/decisions/0007-problem-set-frontend-boundary.md`
+
+変更。
+
+- `packages/contracts/src/index.ts`, `packages/domain/src/index.ts`: re-export追加
+- `apps/web/tokens.css`: `[data-skin="practice"]`のlight skinを**追記**（既存のdark定義は変更なし）
+- `docs/design/open-questions.md`: DESIGN-071〜082
+- `docs/ai/handoffs/README.md`
+
+対戦側のファイルは変更していない。`git diff --stat`に`page.tsx`、`app-shell.tsx`、`battle-*`、`api/rooms`、`api/userscript`、`server/**`、`domain/src/room/**`が出ないことで確認できる。
+
+## 実装した画面
+
+| URL | 内容 |
+| --- | --- |
+| `/discover` | 検索・タグ絞り込み・新着・いいね数が多い。検索するとカードから高密度の1行リストへ切替 |
+| `/sets/[setId]` | セット詳細。収録問題、いいね、ブックマーク、共有、練習/対戦への入口 |
+| `/sets/new` | 作成。Problemsを検索して1問ずつ追加、並び替え、公開範囲、下書き保存 |
+| `/sets/[setId]/edit` | 同じ画面を既存セットの初期値で再利用 |
+| `/library` | マイページ。作成/ブックマーク/いいね/最近使用の4タブと件数 |
+| `GET /api/problems/search` | カタログ検索。`q`、`difficultyMin`、`difficultyMax`、`limit` |
+
+## 設計上の判断
+
+**カタログをserver側に置いた理由**: 3295問で約470KB あり、clientへ丸ごと配ると初期読み込みが重い。Route Handlerで検索し、上位20件だけ返す。DB導入時はこのhandlerの中だけをSQLへ差し替える。
+
+**CSSのclass名を`ps-`で始めた理由**: `globals.css`（対戦側）と`.difficulty`、`.field-label`、`.field-help`、`.section-heading`、`.section-note`が衝突し、実際に詳細画面のDifficulty表示が入力欄のような枠付きで描画された。衝突した5つを`ps-`付きへ改名して解消済み。今後精進側へclassを足すときも`ps-`または`practice-`で始める。
+
+**Difficultyがない問題**: EDPC・典型90・鉄則はratedでないため推定値がない。ABC001など古い回は`is_experimental`。どちらも「—」を出し、セット単位では「目安なし」と表示する。除外はしない。
 
 ## Verification run
 
+- `pnpm check`: pass（lint、typecheck、Vitest 9 passed / 2 skipped、next build）
+- 2 skipはPostgreSQL integration test。`DATABASE_URL`未設定のため`describe.skipIf`で除外される
+- `next build`のroute一覧に`/discover`、`/library`、`/sets/new`、`/sets/[setId]`、`/sets/[setId]/edit`、`/api/problems/search`が出ることを確認
 - `git diff --check`: pass
-- コード未変更のため`pnpm check`は前回の結果（pass）のまま
+- production buildをChromeで手動確認。Discover、詳細、作成、マイページを1440幅で表示
+- 作成フローを通しで確認: タイトル入力 → タグ2つ選択 → 検索結果から3問追加 → 保存 → 詳細へ遷移 → Discoverの新着とマイページの件数へ反映
+- いいね・ブックマークがマイページの件数へ反映されることを確認
+- 下書きがDiscoverへ出ず、マイページの「作成したセット」にだけ出ることを確認
+- console errorなし
+- `/`と`/battle/new`が従来どおりdark skinで表示され、精進側のtoken追加による影響がないことを確認
 
 ## Open questions
 
-DESIGN-074〜080が未解決。認証、限定公開リンクの失効、いいね数の可視範囲、公開停止の主体、複製時の公開範囲、pool統合時期、モバイル対応。
+- DESIGN-074〜080: 認証、限定公開リンクの失効、いいね数の可視範囲、公開停止、複製時の公開範囲、pool統合、モバイル対応
+- DESIGN-081: 作成をステップ式にするか1画面のままにするか。13章が「ステップ数の最終形は次のラウンドで確定」としている
+- DESIGN-082: `is_experimental`のDifficultyを表示するか伏せるか
 
-いずれも画面は作れるが、実際の制御はDBと認証の導入まで効かない。UIとして先に作り、挙動はrepository実装側の課題として残す。
+いずれも画面は動くが、実際の制御はDBと認証の導入まで効かない。
+
+## 既知の制約
+
+- 作成したセットはブラウザーのlocalStorageにだけ残る。別端末・別ブラウザーからは開けない
+- 作成者名は`Litms`固定、いいね数はfixtureの値に自分の1票を足した見せかけ
+- 公開範囲のUIはあるが、access制御は効かない
+- 「このセットで練習する」は無効。練習画面は次のフェーズ
+- 並び替えは↑↓ボタン。デザインのドラッグハンドルは表示のみで、drag & dropは未実装
 
 ## Recommended next action
 
-Userの着手指示を待つ。指示後は上の順序の1から進め、各段階で`pnpm check`と、対戦側E2Eが通ることを確認する。
+1. 画面を見て、2 skinの方向性とカードの密度でよいか判断する
+2. DESIGN-081（ステップ数）とDESIGN-074（認証）を決める
+3. 決まったらPostgreSQLへの永続化をADRにし、`repository.ts`の実装を差し替える
+4. 練習画面（`/practice/[setId]`）を別途設計する

@@ -1,0 +1,177 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import {
+  VISIBILITY_LABEL,
+  difficultyRangeOf,
+  estimateMinutes,
+  type ProblemSet,
+} from "@custom-contest/contracts";
+
+import { DifficultyDot, DifficultyRangeChip, EmptyState, TagPill } from "./components/atoms";
+import { CURRENT_AUTHOR } from "./data/fixtures";
+import { problemSetRepository } from "./data/repository";
+import { usePracticeData } from "./use-practice-data";
+
+function relativeDays(iso: string): string {
+  const days = Math.floor((Date.now() - Date.parse(iso)) / 86_400_000);
+  if (days <= 0) return "今日";
+  if (days === 1) return "昨日";
+  return `${days}日前`;
+}
+
+export function SetDetailView({ setId }: { setId: string }) {
+  const { data, loading } = usePracticeData(() => problemSetRepository.get(setId), [setId]);
+  const [liked, setLiked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
+  const [shareStatus, setShareStatus] = useState("共有");
+
+  useEffect(() => {
+    void problemSetRepository.isLiked(setId).then(setLiked);
+    void problemSetRepository.isBookmarked(setId).then(setBookmarked);
+    void problemSetRepository.markRecent(setId);
+  }, [setId]);
+
+  if (loading) return <p className="practice-loading">読み込み中…</p>;
+  if (!data) {
+    return (
+      <EmptyState
+        title="この問題セットは見つかりません"
+        hint="URLを確認するか、Discoverから探し直してください。この端末に保存されていないセットは開けません。"
+      />
+    );
+  }
+
+  const set: ProblemSet = data;
+  const range = difficultyRangeOf(set.problems);
+  const minutes = estimateMinutes(set.problems);
+  const likeCount = set.likeCount + (liked ? 1 : 0);
+
+  async function copyShareLink() {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/sets/${setId}`);
+      setShareStatus("リンクをコピーしました");
+    } catch {
+      setShareStatus("URL欄からコピーしてください");
+    }
+    window.setTimeout(() => setShareStatus("共有"), 2200);
+  }
+
+  return (
+    <div className="practice-page">
+      <div className="set-detail">
+        <div>
+          <div className="set-detail-tags">
+            {set.tags.map((tag) => (
+              <TagPill key={tag} tag={tag} />
+            ))}
+            {set.status === "draft" && <span className="visibility-pill is-draft">下書き</span>}
+          </div>
+
+          <h1>{set.title}</h1>
+          {set.description && <p className="practice-lead">{set.description}</p>}
+
+          <dl className="set-detail-facts">
+            <div>
+              <dt>Difficulty</dt>
+              <dd>
+                <DifficultyRangeChip range={range} />
+              </dd>
+            </div>
+            <div>
+              <dt>問題数</dt>
+              <dd>{set.problems.length}問</dd>
+            </div>
+            <div>
+              <dt>想定時間</dt>
+              <dd>約{minutes}分</dd>
+            </div>
+            <div>
+              <dt>使用回数</dt>
+              <dd>{set.useCount}</dd>
+            </div>
+          </dl>
+
+          <div className="ps-section-heading">
+            <h2>収録問題</h2>
+            <span className="ps-section-note">問題文はAtCoder上で読んでください</span>
+          </div>
+
+          {set.problems.length === 0 ? (
+            <EmptyState title="まだ問題がありません" hint="編集画面からProblemsを検索して追加できます。" />
+          ) : (
+            <div className="problem-list">
+              {set.problems.map((problem, index) => (
+                <div className="problem-list-row" key={problem.problemId}>
+                  <span className="problem-index">{index + 1}</span>
+                  <span className="problem-title">{problem.title}</span>
+                  <span className="problem-source">{problem.source}</span>
+                  <DifficultyDot difficulty={problem.difficulty} />
+                  <a
+                    className="problem-open"
+                    href={`https://atcoder.jp/contests/${problem.contestId}/tasks/${problem.problemId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    AtCoderで開く ↗
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <aside className="set-detail-side">
+          <div className="side-actions">
+            <button className="practice-button is-primary" type="button" disabled>
+              このセットで練習する
+            </button>
+            <Link className="practice-button" href="/battle/new">
+              友達と対戦する
+            </Link>
+            <p className="ps-field-help">
+              練習画面は次のフェーズで作ります。対戦は現在の招待制BO1へつながります。
+            </p>
+          </div>
+
+          <div className="reaction-row">
+            <button
+              className={`practice-button is-small${liked ? " is-active" : ""}`}
+              type="button"
+              aria-pressed={liked}
+              onClick={() => void problemSetRepository.toggleLike(setId).then(setLiked)}
+            >
+              <span aria-hidden="true">{liked ? "♥" : "♡"}</span> {likeCount}
+            </button>
+            <button
+              className={`practice-button is-small${bookmarked ? " is-active" : ""}`}
+              type="button"
+              aria-pressed={bookmarked}
+              onClick={() => void problemSetRepository.toggleBookmark(setId).then(setBookmarked)}
+            >
+              <span aria-hidden="true">▣</span> {bookmarked ? "保存済み" : "保存"}
+            </button>
+          </div>
+
+          <button className="practice-button is-small" type="button" onClick={() => void copyShareLink()}>
+            {shareStatus}
+          </button>
+
+          {set.authorName === CURRENT_AUTHOR && (
+            <Link className="practice-button is-small" href={`/sets/${setId}/edit`}>
+              このセットを編集
+            </Link>
+          )}
+
+          <p className="set-detail-meta">
+            {set.authorName} が作成 · 更新 {relativeDays(set.updatedAt)}
+            <br />
+            公開範囲: {set.status === "draft" ? "下書き" : VISIBILITY_LABEL[set.visibility]}
+          </p>
+        </aside>
+      </div>
+    </div>
+  );
+}

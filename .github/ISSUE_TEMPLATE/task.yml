@@ -1,0 +1,47 @@
+name: Task / feature
+description: 機能、改善、調査、文書作業を定義します
+title: "[Task]: "
+body:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 目的と期待する結果
+      description: 完了したとき、誰にとって何ができるようになりますか。
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: 背景
+      description: なぜ今必要なのか、関連する仕様・ADR・画面を説明してください。
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 対象範囲と対象外
+      description: 今回行うことと、行わないことを分けてください。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 完了条件
+      description: test可能なチェックリストにしてください。
+      value: |
+        - [ ]
+        - [ ] `pnpm check`が成功する
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 参考資料・screenshots
+      description: 画像はここへdrag & dropできます。秘密や不要な個人情報が写っていないか確認してください。
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: 境界確認
+      options:
+        - label: 外部サービスを使う場合、規約・API文書・頻度・使用データを確認した
+        - label: 個人データを使う場合、目的と本人所有または明示的な許可を確認した

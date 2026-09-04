@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body { margin:0; background:oklch(0.99 0.004 60); color:oklch(0.22 0.01 60); font-family:'Zen Kaku Gothic New', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+a { color:oklch(0.55 0.15 45); text-decoration:none; }
+a:hover { color:oklch(0.48 0.16 45); text-decoration:underline; }
+</style>
+</helmet>
+
+<div style="max-width:1520px;margin:0 auto;padding:64px 40px 120px;display:flex;flex-direction:column;gap:56px">
+
+  <header style="display:flex;flex-direction:column;gap:22px;border-bottom:1px solid oklch(0.9 0.005 60);padding-bottom:36px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div style="width:22px;height:22px;background:oklch(0.68 0.16 45);border-radius:7px"></div>
+      <div style="font:700 13px/1 'JetBrains Mono',monospace;letter-spacing:0.16em;color:oklch(0.55 0.01 60)">CUSTOM CONTEST / PHASE 1</div>
+    </div>
+    <h1 style="font:900 42px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0;max-width:22em;text-wrap:pretty">問題セット UX 設計 — 方向性と構造</h1>
+    <p style="font:400 16px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);margin:0;max-width:50em;text-wrap:pretty">Discover・作成・詳細・共有・管理を対象にした Phase 1。「編集的なコンテンツストア × 静かな開発ツール × 控えめなゲーム要素」を、情報アーキテクチャ・フロー・トークン・代表画面3つに落とし込む。承認後に Phase 2（詳細設計）へ進む。</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <div style="font:500 12px/1 'JetBrains Mono',monospace;color:oklch(0.45 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:9px 14px">対戦画面は対象外</div>
+      <div style="font:500 12px/1 'JetBrains Mono',monospace;color:oklch(0.45 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:9px 14px">Desktop 1440 / Mobile 390</div>
+      <div style="font:500 12px/1 'JetBrains Mono',monospace;color:oklch(0.45 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:9px 14px">Light 標準・Dark 同品質</div>
+    </div>
+  </header>
+
+  <section style="background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:30px">
+    <div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">00 / SCOPE</div>
+    <h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0 0 20px">今回の対象と置いた前提</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.08em;color:oklch(0.5 0.01 60)">対象</div>
+        <div style="font:400 14px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.3 0.01 60)">Discover、問題セット作成（ステップ式）、セット詳細、いいね／ブックマーク／共有、ライブラリ管理、練習・対戦への入口ボタンまで。対戦・練習本体の画面は別途設計する。</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.08em;color:oklch(0.5 0.01 60)">仮定（10章で再掲）</div>
+        <div style="font:400 14px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.3 0.01 60)">認証はメール／既存アカウント想定、AtCoder ID 連携は既存プラットフォームの仕様を継承。公開範囲は 公開／限定公開（リンク限定）／非公開 の3段階。詳細は10章「確認が必要な項目」を参照。</div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">01 / IA</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0">情報アーキテクチャ</h2></div>
+    <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:30px;display:grid;grid-template-columns:1.2fr 1fr;gap:36px">
+      <div style="font:400 13px/2 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);white-space:pre">/discover                    おすすめ・特集・検索結果
+├─ ?q=&amp;tags=&amp;diff=&amp;level=     検索・フィルター状態
+├─ ?sort=popular|new|liked
+/sets/new                    作成ウィザード（?step=1..5）
+├─ ?step=1  方法・プリセット選択
+├─ ?step=2  条件設定
+├─ ?step=3  生成・調整
+├─ ?step=4  タイトル・公開範囲
+└─ ?step=5  最終確認・保存
+/sets/[setId]                 セット詳細
+├─ /edit                      編集（作成ウィザードを再利用）
+/library                      自分のライブラリ
+├─ ?tab=created|bookmarked|liked|recent
+└─ ?visibility=draft|public|unlisted|private
+/u/[username]                 作成者プロフィール（他セット一覧）
+/practice/[setId]             練習開始（入口のみ／本体は別設計）
+/battle/new?setId=            対戦セットアップへ（入口のみ）</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.1em;color:oklch(0.5 0.01 60)">構造の要点</div>
+        <div style="display:flex;flex-direction:column;gap:10px;font:400 14px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.3 0.01 60)">
+          <div>作成ウィザードは URL の <code style="font-family:'JetBrains Mono',monospace;font-size:12px;background:oklch(0.97 0.006 60);padding:2px 5px;border-radius:4px">?step=</code> で位置を持ち、戻る・リロードで状態が保たれる。</div>
+          <div>編集は新規作成と同じウィザードを再利用し、初期値だけ既存セットから埋める。</div>
+          <div>ライブラリは 1 画面で「4つの分類タブ × 公開範囲フィルター」の組み合わせとして表現する（別画面に分けない）。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">02 / FLOWS</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0">主要ユーザーフロー</h2></div>
+
+    <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:16px">
+      <div style="font:700 16px 'Zen Kaku Gothic New',sans-serif">A. Discover → 練習・対戦の入口</div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+        <div style="font:500 13px/1 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:10px 13px">Discover</div>
+        <div style="color:oklch(0.7 0.005 60)">→</div>
+        <div style="font:500 13px/1 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:10px 13px">検索／タグ／並び替え</div>
+        <div style="color:oklch(0.7 0.005 60)">→</div>
+        <div style="font:500 13px/1 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:10px 13px">セット詳細</div>
+        <div style="color:oklch(0.7 0.005 60)">→</div>
+        <div style="font:500 13px/1 'JetBrains Mono',monospace;color:#fff;background:oklch(0.68 0.16 45);border-radius:8px;padding:10px 13px">練習を開始 / 友達と対戦</div>
+      </div>
+      <div style="font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);border-top:1px solid oklch(0.93 0.005 60);padding-top:14px">未挑戦のユーザーには問題一覧を「Difficulty・タグのみ」表示し、解答に関わる情報（提出結果等）は出さない。</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:16px">
+        <div style="font:700 16px 'Zen Kaku Gothic New',sans-serif">B. 問題セット作成</div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+          <div style="font:500 13px/1 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:9px 12px">プリセット選択</div>
+          <div style="color:oklch(0.7 0.005 60)">→</div>
+          <div style="font:500 13px/1 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:9px 12px">条件設定</div>
+          <div style="color:oklch(0.7 0.005 60)">→</div>
+          <div style="font:500 13px/1 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:9px 12px">生成・調整</div>
+          <div style="color:oklch(0.7 0.005 60)">→</div>
+          <div style="font:500 13px/1 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:9px 12px">タイトル・公開範囲</div>
+          <div style="color:oklch(0.7 0.005 60)">→</div>
+          <div style="font:500 13px/1 'JetBrains Mono',monospace;color:#fff;background:oklch(0.68 0.16 45);border-radius:8px;padding:9px 12px">保存</div>
+        </div>
+        <div style="font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);border-top:1px solid oklch(0.93 0.005 60);padding-top:14px">未ログインで保存を押した場合、認証へ遷移し、成功後は作成中のウィザード状態（step・条件・生成結果・固定した問題）に復帰する。</div>
+      </div>
+      <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:16px">
+        <div style="font:700 16px 'Zen Kaku Gothic New',sans-serif">C. いいね／ブックマーク／共有</div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+          <div style="font:500 13px/1 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:9px 12px">セット詳細 / カード</div>
+          <div style="color:oklch(0.7 0.005 60)">→</div>
+          <div style="font:500 13px/1 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:9px 12px">♡ いいね（公開の評価）</div>
+          <div style="font:500 13px/1 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:9px 12px">▣ ブックマーク（非公開の保存）</div>
+          <div style="color:oklch(0.7 0.005 60)">→</div>
+          <div style="font:500 13px/1 'JetBrains Mono',monospace;color:oklch(0.3 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:9px 12px">共有（リンクコピー）</div>
+        </div>
+        <div style="font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);border-top:1px solid oklch(0.93 0.005 60);padding-top:14px">2 操作は常に隣接して並べるが、視覚的に別物と分かるようアイコン形状・押下後の表示先（いいね→数値が動く／ブックマーク→ライブラリに現れる）を変える。07章で詳述。</div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">03 / SCREENS</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0">必要な画面一覧</h2></div>
+    <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:60px 1.1fr 1.7fr 1fr;background:oklch(0.97 0.006 60);border-bottom:1px solid oklch(0.9 0.005 60);font:700 11px/1 'JetBrains Mono',monospace;letter-spacing:0.08em;color:oklch(0.5 0.01 60)"><div style="padding:13px 18px">#</div><div style="padding:13px 18px">画面</div><div style="padding:13px 18px">目的</div><div style="padding:13px 18px">Phase 1</div></div>
+      <div style="display:grid;grid-template-columns:60px 1.1fr 1.7fr 1fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:15px 18px;font-family:'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">01</div><div style="padding:15px 18px;font-weight:700">Discover</div><div style="padding:15px 18px;color:oklch(0.4 0.01 60)">特集・検索・フィルターでセットを見つける</div><div style="padding:15px 18px"><span style="font:700 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.15 45)">代表画面</span></div></div>
+      <div style="display:grid;grid-template-columns:60px 1.1fr 1.7fr 1fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:15px 18px;font-family:'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">02</div><div style="padding:15px 18px;font-weight:700">作成ウィザード（5 step）</div><div style="padding:15px 18px;color:oklch(0.4 0.01 60)">プリセット→条件→生成・調整→保存設定→確認</div><div style="padding:15px 18px"><span style="font:700 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.15 45)">代表画面（step3）</span></div></div>
+      <div style="display:grid;grid-template-columns:60px 1.1fr 1.7fr 1fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:15px 18px;font-family:'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">03</div><div style="padding:15px 18px;font-weight:700">セット詳細</div><div style="padding:15px 18px;color:oklch(0.4 0.01 60)">情報確認・いいね・ブックマーク・共有・練習/対戦へ</div><div style="padding:15px 18px"><span style="font:700 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.15 45)">代表画面</span></div></div>
+      <div style="display:grid;grid-template-columns:60px 1.1fr 1.7fr 1fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:15px 18px;font-family:'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">04</div><div style="padding:15px 18px;font-weight:700">ライブラリ（マイページ）</div><div style="padding:15px 18px;color:oklch(0.4 0.01 60)">作成・ブックマーク・いいね・最近使用の管理</div><div style="padding:15px 18px;color:oklch(0.6 0.01 60)">Phase 2</div></div>
+      <div style="display:grid;grid-template-columns:60px 1.1fr 1.7fr 1fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:15px 18px;font-family:'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">05</div><div style="padding:15px 18px;font-weight:700">作成者プロフィール</div><div style="padding:15px 18px;color:oklch(0.4 0.01 60)">作成者の公開セット一覧</div><div style="padding:15px 18px;color:oklch(0.6 0.01 60)">Phase 2</div></div>
+      <div style="display:grid;grid-template-columns:60px 1.1fr 1.7fr 1fr;font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:15px 18px;font-family:'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">06</div><div style="padding:15px 18px;font-weight:700">共有シート / 認証ゲート</div><div style="padding:15px 18px;color:oklch(0.4 0.01 60)">リンクコピーの確認、未ログイン時の割り込み</div><div style="padding:15px 18px;color:oklch(0.6 0.01 60)">Phase 2（オーバーレイ）</div></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">04 / COMPONENTS</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0">主要コンポーネント一覧</h2></div>
+    <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:1fr 2fr;background:oklch(0.97 0.006 60);border-bottom:1px solid oklch(0.9 0.005 60);font:700 11px/1 'JetBrains Mono',monospace;letter-spacing:0.08em;color:oklch(0.5 0.01 60)"><div style="padding:13px 18px">名前</div><div style="padding:13px 18px">役割</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">SetCard</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">variant: featured（大タイトル＋カバー＋余白）/ list（1行・比較用）。1つのコンポーネントで密度を切り替える。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">TypographicCover</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">セット名・分野・Difficulty・問題数から自動生成する識別用カバー。写真は使わない。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">DifficultyRangeChip</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">色ドット＋数値レンジ＋色名を併記。ブランドの橙とは異なる色相を使う。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">TagPill</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">pill型。選択中は橙背景、非選択は枠のみ。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">StepIndicator</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">5 step。現在地・完了・未到達を形と色で区別（文字ラベルも常に表示）。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">PresetCard</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">step1。代表的な条件プリセットを選ぶ大きめのカード。詳細条件はここでは見せない。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">ConditionRow</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">step2。「C問題×3」のような条件枠。追加・削除・値変更ができる。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">ProblemGenRow</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">step3。1問ずつの再抽選・固定・削除・並び替えハンドル。固定は視覚的に区別する。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">FilterBar / FilterDrawer</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">Desktop はインラインのバー、Mobile はボトムシートのドロワー。適用中条件は常に見える形にする。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">VisibilityToggle</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">公開／限定公開／非公開の 3 択セグメント。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">LikeButton / BookmarkButton</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">形状を分ける（♡ 塗り替え型 / ▣ 出し入れ型）。押下後のフィードバック先も異なる（07章）。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;border-bottom:1px solid oklch(0.94 0.005 60);font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">LibraryTabs</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">作成／ブックマーク／いいね／最近使用の 4 タブ＋公開範囲フィルター。</div></div>
+      <div style="display:grid;grid-template-columns:1fr 2fr;font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif"><div style="padding:14px 18px;font-family:'JetBrains Mono',monospace;font-size:13px">StatusBanner / Toast</div><div style="padding:14px 18px;color:oklch(0.4 0.01 60)">保存中／成功／失敗／条件不足／通信切断などの状態通知。色に加え記号とテキストで示す。</div></div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">05 / COLOR</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0">ライト／ダーク カラーパレット案</h2></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:16px">
+        <div style="font:700 15px 'Zen Kaku Gothic New',sans-serif">Light（標準）</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.99 0.004 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">bg</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">surface</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.9 0.005 60);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">border</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.22 0.01 60);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">text</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.45 0.01 60);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">text/muted</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.68 0.16 45);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">accent</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.97 0.03 45);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">accent/tint</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.6 0.19 25);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">error</div></div>
+        </div>
+        <div style="font:400 12px/1.7 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60);border-top:1px solid oklch(0.93 0.005 60);padding-top:12px">bg #FCFBFA 相当 · text #2E2A26 相当 · accent #E8823A 相当</div>
+      </div>
+
+      <div style="background:oklch(0.19 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:16px">
+        <div style="font:700 15px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">Dark（同品質）</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.19 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">bg</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.24 0.012 60);border:1px solid oklch(0.32 0.012 60);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">surface</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.32 0.012 60);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">border</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.94 0.005 60);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">text</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.65 0.01 60);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">text/muted</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.75 0.17 45);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">accent</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.3 0.04 45);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">accent/tint</div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><div style="height:44px;background:oklch(0.62 0.18 25);border-radius:8px"></div><div style="font:400 10px/1.4 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">error</div></div>
+        </div>
+        <div style="font:400 12px/1.7 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60);border-top:1px solid oklch(0.3 0.012 60);padding-top:12px">単純反転ではなく彩度を落とした黒に近いチャコール。accent は暗背景でも濁らないよう明度を上げている。</div>
+      </div>
+    </div>
+
+    <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:14px">
+      <div style="font:700 15px 'Zen Kaku Gothic New',sans-serif">Difficulty 色（ブランド橙と競合しない色相）</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:7px;background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 12px"><span style="width:9px;height:9px;border-radius:2px;background:oklch(0.7 0.005 60)"></span><span style="font:500 12px 'JetBrains Mono',monospace">灰 400</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 12px"><span style="width:9px;height:9px;border-radius:2px;background:oklch(0.55 0.1 55)"></span><span style="font:500 12px 'JetBrains Mono',monospace">茶 800</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 12px"><span style="width:9px;height:9px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace">緑 1200</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 12px"><span style="width:9px;height:9px;border-radius:2px;background:oklch(0.7 0.14 195)"></span><span style="font:500 12px 'JetBrains Mono',monospace">水 1600</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 12px"><span style="width:9px;height:9px;border-radius:2px;background:oklch(0.6 0.16 260)"></span><span style="font:500 12px 'JetBrains Mono',monospace">青 2000</span></div>
+        <div style="display:flex;align-items:center;gap:7px;background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 12px"><span style="width:9px;height:9px;border-radius:2px;background:oklch(0.6 0.16 320)"></span><span style="font:500 12px 'JetBrains Mono',monospace">紫 2400</span></div>
+      </div>
+      <div style="font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);border-top:1px solid oklch(0.93 0.005 60);padding-top:14px;text-wrap:pretty">橙（hue 45）は使わず、灰・茶・緑・水・青・紫の 6 段に絞る（AtCoder 準拠だが橙と黄を避けた独自レンジ）。色ドット＋数値＋色名の3点を必ず併記し、色だけに依存しない。</div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">06 / FOUNDATIONS</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0">タイポグラフィ・角丸・余白・境界線</h2></div>
+    <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px">
+      <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:16px">
+        <div style="font:700 15px 'Zen Kaku Gothic New',sans-serif">文字</div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:baseline;gap:16px;border-bottom:1px solid oklch(0.93 0.005 60);padding-bottom:12px"><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60);width:110px">display / 34 · 900</span><span style="font:900 34px/1.2 'Zen Kaku Gothic New',sans-serif">DP入門</span></div>
+          <div style="display:flex;align-items:baseline;gap:16px;border-bottom:1px solid oklch(0.93 0.005 60);padding-bottom:12px"><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60);width:110px">h1 / 24 · 700</span><span style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif">セット詳細の見出し</span></div>
+          <div style="display:flex;align-items:baseline;gap:16px;border-bottom:1px solid oklch(0.93 0.005 60);padding-bottom:12px"><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60);width:110px">body / 14 · 400</span><span style="font:400 14px/1.8 'Zen Kaku Gothic New',sans-serif">本文。行間 1.8 を基本とする。</span></div>
+          <div style="display:flex;align-items:baseline;gap:16px"><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60);width:110px">mono / 数値</span><span style="font:700 18px/1 'JetBrains Mono',monospace">1042 · 6問 · 90分</span></div>
+        </div>
+        <div style="font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);border-top:1px solid oklch(0.93 0.005 60);padding-top:14px">和文は Zen Kaku Gothic New（400/500/700/900）。Difficulty・問題数・時間などの数値は JetBrains Mono に切り替え、桁を揺らさない。</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:14px">
+          <div style="font:700 15px 'Zen Kaku Gothic New',sans-serif">角丸</div>
+          <div style="display:flex;gap:10px">
+            <div style="width:48px;height:48px;background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;display:flex;align-items:flex-end;justify-content:center;font:400 10px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60);padding-bottom:4px">8</div>
+            <div style="width:48px;height:48px;background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:12px;display:flex;align-items:flex-end;justify-content:center;font:400 10px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60);padding-bottom:4px">12</div>
+            <div style="width:48px;height:48px;background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;display:flex;align-items:flex-end;justify-content:center;font:400 10px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60);padding-bottom:4px">pill</div>
+          </div>
+          <div style="font:400 12px/1.7 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60)">8=ボタン・入力欄 / 12=カード（10〜14の中央値） / pill=タグ・フィルター・状態表示のみ</div>
+        </div>
+        <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:14px">
+          <div style="font:700 15px 'Zen Kaku Gothic New',sans-serif">余白・境界線</div>
+          <div style="font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60)">4px 基準。使う値は 4 / 8 / 12 / 16 / 20 / 24 / 32 / 48 / 64。境界線は 1px の hairline のみで、太い枠・強い影は使わない。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">07 / DISCOVER DENSITY</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0">Discover の情報密度設計</h2></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:14px">
+        <div style="font:700 15px 'Zen Kaku Gothic New',sans-serif">特集エリア（低密度・印象重視）</div>
+        <div style="font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60)">大きなタイポグラフィカバー、タイトル、短いキャッチ、主要タグ 1〜2 個、対象レベルのみ。横スクロールまたは大きめグリッドで数を絞って見せる（1画面 3〜4件）。</div>
+      </div>
+      <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:14px">
+        <div style="font:700 15px 'Zen Kaku Gothic New',sans-serif">検索結果（高密度・比較重視）</div>
+        <div style="font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60)">1行リスト。タイトル→タグ→対象レベル→Difficulty帯→問題数→想定時間→いいね数→作成者→更新/使用回数を優先度順に配置。文字サイズと色の階層だけで整理し、アイコンは最小限（♡▣のみ）。</div>
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:16px">
+      <div style="font:700 15px 'Zen Kaku Gothic New',sans-serif">検索・フィルターの分離</div>
+      <div style="font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);text-wrap:pretty">基本検索（キーワード＋人気/新着/いいね数の並び替え）は常に見える。詳細フィルター（タグ・Difficulty・問題数・対象レベル）はDesktopでは折りたたみ可能なインラインバー、Mobileではボトムシートのドロワーに格納する。適用中の条件は検索バー直下に pill で並べ、× で個別解除・「すべて解除」を常設する。</div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">08 / CREATE STEPS</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0">問題セット作成ステップ</h2></div>
+    <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:30px;display:flex;flex-direction:column;gap:20px">
+      <div style="display:flex;align-items:center;gap:0">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1"><div style="width:32px;height:32px;border-radius:999px;background:oklch(0.68 0.16 45);color:#fff;display:flex;align-items:center;justify-content:center;font:700 13px 'JetBrains Mono',monospace">1</div><div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.3 0.01 60)">方法を選ぶ</div></div>
+        <div style="height:1px;flex:1;background:oklch(0.68 0.16 45)"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1"><div style="width:32px;height:32px;border-radius:999px;background:oklch(0.68 0.16 45);color:#fff;display:flex;align-items:center;justify-content:center;font:700 13px 'JetBrains Mono',monospace">2</div><div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.3 0.01 60)">条件設定</div></div>
+        <div style="height:1px;flex:1;background:oklch(0.68 0.16 45)"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1"><div style="width:32px;height:32px;border-radius:999px;background:oklch(0.68 0.16 45);border:2px solid oklch(0.68 0.16 45);color:#fff;display:flex;align-items:center;justify-content:center;font:700 13px 'JetBrains Mono',monospace;box-shadow:0 0 0 3px oklch(0.68 0.16 45 / 0.25)">3</div><div style="font:700 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.22 0.01 60)">生成・調整</div></div>
+        <div style="height:1px;flex:1;background:oklch(0.9 0.005 60)"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1"><div style="width:32px;height:32px;border-radius:999px;border:1px solid oklch(0.85 0.005 60);color:oklch(0.6 0.01 60);display:flex;align-items:center;justify-content:center;font:700 13px 'JetBrains Mono',monospace">4</div><div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.6 0.01 60)">保存設定</div></div>
+        <div style="height:1px;flex:1;background:oklch(0.9 0.005 60)"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1"><div style="width:32px;height:32px;border-radius:999px;border:1px solid oklch(0.85 0.005 60);color:oklch(0.6 0.01 60);display:flex;align-items:center;justify-content:center;font:700 13px 'JetBrains Mono',monospace">5</div><div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.6 0.01 60)">最終確認</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border-top:1px solid oklch(0.93 0.005 60);padding-top:18px">
+        <div><b>1 方法を選ぶ</b> — 「プリセットから」「詳細条件から」「AI風に説明して生成」など入口を大きめのカードで提示。プリセット例: 「C問題×6」「緑になる前に」「DP入門」。</div>
+        <div><b>2 条件設定</b> — プリセットを選ぶと代表的な条件が事前入力される。「詳細条件を追加」を押すまで、Difficulty帯・出典・除外条件などは隠す。</div>
+        <div><b>3 生成・調整</b> — 生成結果を1行ずつ表示。行ごとに「再抽選」「固定」「削除」、全体に「すべて再生成」「条件に合う問題を追加」。固定した行は視覚的に区別（枠色・アイコン）し、再生成しても変わらないことを示す。候補不足時は該当件数と緩和案を先に出す。</div>
+        <div><b>4 保存設定</b> — タイトル・説明・タグ・公開範囲・想定Difficulty・想定回答時間・対象レベル。</div>
+        <div><b>5 最終確認</b> — 上記すべてのサマリを1画面で確認し「保存」。未ログインならここで認証を挟み、成功後に同じ確認画面へ戻る。</div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">09 / GAME FEEL</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0">ゲーム表現を使う場所・使わない場所</h2></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div style="background:oklch(0.97 0.03 45);border:1px solid oklch(0.68 0.16 45 / 0.35);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:12px">
+        <div style="font:700 15px 'Zen Kaku Gothic New',sans-serif">使う場所</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.35 0.02 45)">
+          <div>Difficultyバッジ・色ドット（視認性のための強さ）</div>
+          <div>対象レベル・ランク表示</div>
+          <div>問題を解き終えた・セット完走などの達成表示</div>
+          <div>「練習を開始」「対戦へ」ボタン押下の瞬間（短いトランジションのみ）</div>
+          <div>セット完了後の結果サマリ</div>
+        </div>
+      </div>
+      <div style="background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:12px">
+        <div style="font:700 15px 'Zen Kaku Gothic New',sans-serif">使わない場所（静か）</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60)">
+          <div>Discover の検索結果・フィルター</div>
+          <div>作成ウィザードの通常操作</div>
+          <div>いいね・ブックマークの通常フィードバック（小さく素早いのみ）</div>
+          <div>ライブラリ・管理画面全体</div>
+        </div>
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60)">対戦開始時のトランジション案: セット詳細の「友達と対戦」を押すと、画面全体が 200ms でわずかに暗転しながら中央のボタンだけが橙のグロー無しでスケール（1.0→0.96→画面遷移）。ネオンやパーティクルは使わず、「静かな画面からモードが切り替わる」ことだけを 300ms 以内に伝える。</div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:20px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">10 / OPEN ITEMS</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0">仮定と確認が必要な項目</h2></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:12px">
+        <div style="font:700 13px/1 'JetBrains Mono',monospace;letter-spacing:0.06em;color:oklch(0.5 0.01 60)">置いた仮定</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.35 0.01 60)">
+          <div>公開範囲は 公開／限定公開（リンクを知る人のみ）／非公開 の3段階。</div>
+          <div>いいねは1ユーザー1回まで、取り消し可能。ブックマークは回数制限なし。</div>
+          <div>ライブラリの「最近使用」は練習・対戦で開いたセットを直近順に自動記録。</div>
+          <div>問題候補データは既存の対戦MVP設計と同じ外部ソース想定（AtCoder Problems 相当の公開API）。</div>
+          <div>共有はリンクコピー中心。SNS個別ボタンは今回は設けない。</div>
+        </div>
+      </div>
+      <div style="background:oklch(0.97 0.03 45);border:1px solid oklch(0.68 0.16 45 / 0.3);border-radius:12px;padding:26px;display:flex;flex-direction:column;gap:12px">
+        <div style="font:700 13px/1 'JetBrains Mono',monospace;letter-spacing:0.06em;color:oklch(0.5 0.12 45)">確認が必要な項目</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.35 0.02 45)">
+          <div>認証方式（メール／OAuth／AtCoder ID連携の有無）と、未ログイン時に見せる範囲。</div>
+          <div>限定公開リンクに期限や失効の仕組みを持たせるか。</div>
+          <div>いいね数・使用回数を誰にでも見せるか、作成者のみに見せるか。</div>
+          <div>「公開停止」は誰が・どの基準で行うか（運営判断／自動検知）。</div>
+          <div>問題セットの複製時、元の公開範囲を継承するかドラフトに落とすか。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:24px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">11 / WIREFRAMES</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0 0 6px">代表画面 3つ（簡易モック・Desktop 1440）</h2><p style="font:400 14px/1.7 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);margin:0;max-width:50em">方向性を確認するための低〜中忠実度モック。承認後、Phase 2 でトークン・状態・Mobile まで詰める。</p></div>
+
+    <div style="width:1440px;background:oklch(0.99 0.004 60);border:1px solid oklch(0.9 0.005 60);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.08)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.9 0.005 60);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#fff">
+        <div style="display:flex;align-items:center;gap:22px">
+          <div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.68 0.16 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif">Custom Contest</span></div>
+          <div style="display:flex;gap:18px;font:500 13px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)"><span style="color:oklch(0.22 0.01 60);border-bottom:2px solid oklch(0.68 0.16 45);padding-bottom:19px;margin-bottom:-21px">Discover</span><span>作る</span><span>ライブラリ</span></div>
+        </div>
+
+        <div style="width:26px;height:26px;border-radius:999px;background:oklch(0.9 0.005 60)"></div>
+      </div>
+
+      <div style="padding:36px 32px 12px;display:flex;flex-direction:column;gap:10px">
+        <div style="flex: 1; max-width: 420px; margin: 0 24px; background: oklch(0.97 0.006 60); border: 1px solid oklch(0.9 0.005 60); border-radius: 8px; padding: 10px 14px; font: 400 13px 'Zen Kaku Gothic New',sans-serif; color: oklch(0.55 0.01 60); width: 446px; height: 16px">⌕ セット・作成者・タグで検索</div><div style="font:900 30px/1.2 'Zen Kaku Gothic New',sans-serif">おすすめの問題セット</div>
+        <div style="font:400 14px/1.6 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60)">今週伸びている、レベル別に選びやすいセットを特集しています</div>
+      </div>
+      <div style="padding:8px 32px 32px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+        <div style="display:flex;flex-direction:column;gap:0;border-radius:12px;overflow:hidden;border:1px solid oklch(0.9 0.005 60)">
+          <div style="height:160px;background:oklch(0.22 0.01 60);position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:20px;overflow:hidden">
+            <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:999px;border:24px solid oklch(0.68 0.16 45 / 0.5)"></div>
+            <div style="font:900 22px/1.25 'Zen Kaku Gothic New',sans-serif;color:#fff;position:relative">緑になる前に<br>解きたい10問</div>
+          </div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px;background:#fff">
+            <div style="display:flex;gap:6px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:5px 9px">茶〜緑</span><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:5px 9px">初中級</span></div>
+            <div style="font:400 12px/1.5 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60)">緑帯に上がる前の実力チェックに</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0;border-radius:12px;overflow:hidden;border:1px solid oklch(0.9 0.005 60)">
+          <div style="height:160px;background:oklch(0.3 0.02 250);position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:20px;overflow:hidden">
+            <div style="position:absolute;bottom:-20px;left:-20px;width:100px;height:100px;background:oklch(0.68 0.16 45 / 0.35);transform:rotate(20deg)"></div>
+            <div style="font:900 22px/1.25 'Zen Kaku Gothic New',sans-serif;color:#fff;position:relative">Graph Sprint</div>
+          </div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px;background:#fff">
+            <div style="display:flex;gap:6px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:5px 9px">グラフ</span><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:5px 9px">中級</span></div>
+            <div style="font:400 12px/1.5 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60)">グラフ探索を一気に固める6問</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0;border-radius:12px;overflow:hidden;border:1px solid oklch(0.9 0.005 60)">
+          <div style="height:160px;background:oklch(0.4 0.03 45);position:relative;display:flex;flex-direction:column;justify-content:flex-end;padding:20px;overflow:hidden">
+            <div style="position:absolute;top:20px;right:20px;width:14px;height:14px;background:#fff;border-radius:3px;transform:rotate(12deg)"></div>
+            <div style="position:absolute;top:40px;right:44px;width:14px;height:14px;background:#fff;border-radius:3px;transform:rotate(12deg)"></div>
+            <div style="font:900 22px/1.25 'Zen Kaku Gothic New',sans-serif;color:#fff;position:relative">DP入門セット</div>
+          </div>
+          <div style="padding:16px;display:flex;flex-direction:column;gap:10px;background:#fff">
+            <div style="display:flex;gap:6px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:5px 9px">DP</span><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:5px 9px">初級</span></div>
+            <div style="font:400 12px/1.5 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60)">典型DPを順番に6問</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:8px 32px 36px;display:flex;flex-direction:column;gap:14px;border-top:1px solid oklch(0.93 0.005 60)">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-top:22px">
+          <div style="font:700 17px 'Zen Kaku Gothic New',sans-serif">検索結果 <span style="font:400 13px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">128件</span></div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <div style="display:flex;gap:6px"><span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:#fff;background:oklch(0.68 0.16 45);border-radius:999px;padding:6px 11px">緑</span><span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:6px 11px">DP</span><span style="font:500 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">すべて解除</span></div>
+            <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:8px 13px">▽ 詳細フィルター</div>
+            <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:8px 13px">人気順 ▾</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;border:1px solid oklch(0.9 0.005 60);border-radius:12px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:2.2fr 1fr 0.8fr 0.8fr 0.8fr 0.9fr;padding:14px 20px;background:oklch(0.97 0.006 60);border-bottom:1px solid oklch(0.9 0.005 60);font:700 11px/1 'JetBrains Mono',monospace;letter-spacing:0.05em;color:oklch(0.5 0.01 60)"><div>タイトル</div><div>タグ</div><div>Difficulty</div><div>問題数</div><div>想定時間</div><div>作成者 / 反応</div></div>
+          <div style="display:grid;grid-template-columns:2.2fr 1fr 0.8fr 0.8fr 0.8fr 0.9fr;padding:15px 20px;border-bottom:1px solid oklch(0.94 0.005 60);align-items:center;background:#fff">
+            <div style="font:700 14px 'Zen Kaku Gothic New',sans-serif">ABC C 良問6選</div>
+            <div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">全探索</div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.55 0.1 55)"></span><span style="font:500 12px 'JetBrains Mono',monospace">320–780</span></div>
+            <div style="font:500 12px 'JetBrains Mono',monospace">6問</div>
+            <div style="font:500 12px 'JetBrains Mono',monospace">約40分</div>
+            <div style="display:flex;align-items:center;gap:10px;font:400 11px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)"><span>sora__</span><span>♡ 61</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:2.2fr 1fr 0.8fr 0.8fr 0.8fr 0.9fr;padding:15px 20px;border-bottom:1px solid oklch(0.94 0.005 60);align-items:center;background:#fff">
+            <div style="font:700 14px 'Zen Kaku Gothic New',sans-serif">DP入門セット</div>
+            <div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">DP・EDPC</div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace">846–1198</span></div>
+            <div style="font:500 12px 'JetBrains Mono',monospace">6問</div>
+            <div style="font:500 12px 'JetBrains Mono',monospace">約90分</div>
+            <div style="display:flex;align-items:center;gap:10px;font:400 11px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)"><span>kenta_ac</span><span>♡ 87</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:2.2fr 1fr 0.8fr 0.8fr 0.8fr 0.9fr;padding:15px 20px;align-items:center;background:#fff">
+            <div style="font:700 14px 'Zen Kaku Gothic New',sans-serif">緑になる前に解きたい10問</div>
+            <div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">典型</div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.55 0.1 55)"></span><span style="font:500 12px 'JetBrains Mono',monospace">700–1400</span></div>
+            <div style="font:500 12px 'JetBrains Mono',monospace">10問</div>
+            <div style="font:500 12px 'JetBrains Mono',monospace">約120分</div>
+            <div style="display:flex;align-items:center;gap:10px;font:400 11px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)"><span>mio_p</span><span>♡ 342</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:1440px;background:oklch(0.99 0.004 60);border:1px solid oklch(0.9 0.005 60);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.08)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.9 0.005 60);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#fff">
+        <div style="display:flex;align-items:center;gap:22px"><div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.68 0.16 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif">Custom Contest</span></div><span style="font:500 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">問題セットを作成</span></div>
+        <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">× 閉じる（下書き保存）</div>
+      </div>
+      <div style="padding:28px 60px 8px">
+        <div style="display:flex;align-items:center">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1"><div style="width:28px;height:28px;border-radius:999px;background:oklch(0.68 0.16 45);color:#fff;display:flex;align-items:center;justify-content:center;font:700 12px 'JetBrains Mono',monospace">✓</div><div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.35 0.01 60)">方法を選ぶ</div></div>
+          <div style="height:1px;flex:1;background:oklch(0.68 0.16 45)"></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1"><div style="width:28px;height:28px;border-radius:999px;background:oklch(0.68 0.16 45);color:#fff;display:flex;align-items:center;justify-content:center;font:700 12px 'JetBrains Mono',monospace">✓</div><div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.35 0.01 60)">条件設定</div></div>
+          <div style="height:1px;flex:1;background:oklch(0.68 0.16 45)"></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1"><div style="width:28px;height:28px;border-radius:999px;background:oklch(0.68 0.16 45);color:#fff;display:flex;align-items:center;justify-content:center;font:700 12px 'JetBrains Mono',monospace;box-shadow:0 0 0 3px oklch(0.68 0.16 45 / 0.25)">3</div><div style="font:700 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.22 0.01 60)">生成・調整</div></div>
+          <div style="height:1px;flex:1;background:oklch(0.9 0.005 60)"></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1"><div style="width:28px;height:28px;border-radius:999px;border:1px solid oklch(0.85 0.005 60);color:oklch(0.6 0.01 60);display:flex;align-items:center;justify-content:center;font:700 12px 'JetBrains Mono',monospace">4</div><div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.6 0.01 60)">保存設定</div></div>
+          <div style="height:1px;flex:1;background:oklch(0.9 0.005 60)"></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1"><div style="width:28px;height:28px;border-radius:999px;border:1px solid oklch(0.85 0.005 60);color:oklch(0.6 0.01 60);display:flex;align-items:center;justify-content:center;font:700 12px 'JetBrains Mono',monospace">5</div><div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.6 0.01 60)">最終確認</div></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:0;padding:24px 60px 40px;gap:24px">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between"><div style="font:700 18px 'Zen Kaku Gothic New',sans-serif">生成結果（6問）</div><div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.68 0.16 45);border:1px solid oklch(0.68 0.16 45 / 0.4);border-radius:8px;padding:8px 12px">↻ すべて再生成</div></div>
+
+          <div style="display:flex;align-items:center;gap:14px;border:1px solid oklch(0.9 0.005 60);border-radius:10px;padding:14px 16px">
+            <div style="color:oklch(0.75 0.005 60);font:400 13px 'JetBrains Mono',monospace">⠿</div>
+            <div style="flex:1"><div style="font:700 14px 'Zen Kaku Gothic New',sans-serif">Frog 1</div><div style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">EDPC A · DP</div></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.55 0.1 55)"></span><span style="font:500 12px 'JetBrains Mono',monospace">846</span></div>
+            <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:6px;padding:7px 10px">↻ 再抽選</div>
+            <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:6px;padding:7px 10px">固定</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;border:1px solid oklch(0.68 0.16 45 / 0.4);background:oklch(0.97 0.03 45);border-radius:10px;padding:14px 16px">
+            <div style="color:oklch(0.6 0.01 60);font:400 13px 'JetBrains Mono',monospace">⠿</div>
+            <div style="flex:1"><div style="font:700 14px 'Zen Kaku Gothic New',sans-serif">Vacation</div><div style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.5 0.02 45)">EDPC C · DP</div></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace">1042</span></div>
+            <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.02 45);opacity:0.5">↻ 再抽選</div>
+            <div style="font:700 12px 'Zen Kaku Gothic New',sans-serif;color:#fff;background:oklch(0.68 0.16 45);border-radius:6px;padding:7px 10px">📌 固定中</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;border:1px solid oklch(0.9 0.005 60);border-radius:10px;padding:14px 16px">
+            <div style="color:oklch(0.75 0.005 60);font:400 13px 'JetBrains Mono',monospace">⠿</div>
+            <div style="flex:1"><div style="font:700 14px 'Zen Kaku Gothic New',sans-serif">Knapsack 1</div><div style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">EDPC D · DP</div></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace">1183</span></div>
+            <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:6px;padding:7px 10px">↻ 再抽選</div>
+            <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:6px;padding:7px 10px">固定</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;background:oklch(0.97 0.006 60);border:1px dashed oklch(0.85 0.005 60);border-radius:10px;padding:13px 16px;font:500 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60);justify-content:center">＋ 条件に合う問題を追加</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          <div style="font:700 14px 'Zen Kaku Gothic New',sans-serif">条件</div>
+          <div style="font:400 13px/1.7 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:10px;padding:14px">DP 問題 × 6<br>ABC の EDPC のみ<br>同じ Contest を複数選ばない</div>
+          <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.68 0.16 45)">条件を編集する</div>
+          <div style="margin-top:8px;font:400 12px/1.7 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60);border-top:1px solid oklch(0.93 0.005 60);padding-top:14px">📌 固定 1問<br>候補 214問 中から抽出</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:1440px;background:oklch(0.99 0.004 60);border:1px solid oklch(0.9 0.005 60);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.08)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.9 0.005 60);display:flex;align-items:center;gap:22px;padding:0 24px;background:#fff">
+        <div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.68 0.16 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif">Custom Contest</span></div>
+        <div style="display:flex;gap:18px;font:500 13px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)"><span>Discover</span><span>作る</span><span>ライブラリ</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:0">
+        <div style="padding:40px 48px;display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;gap:6px"><span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:6px 10px">DP</span><span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:6px 10px">EDPC</span><span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:6px 10px">初級</span></div>
+          <div style="font:900 32px/1.3 'Zen Kaku Gothic New',sans-serif">DP入門セット</div>
+          <div style="font:400 14px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);max-width:36em">緑帯に上がる前に一度は通しておきたい典型 DP を集めています。EDPC の前半 6 問。</div>
+          <div style="display:flex;gap:28px;border-top:1px solid oklch(0.93 0.005 60);border-bottom:1px solid oklch(0.93 0.005 60);padding:16px 0">
+            <div style="display:flex;flex-direction:column;gap:4px"><div style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">Difficulty</div><div style="font:700 15px 'JetBrains Mono',monospace">846–1198</div></div>
+            <div style="display:flex;flex-direction:column;gap:4px"><div style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">問題数</div><div style="font:700 15px 'JetBrains Mono',monospace">6問</div></div>
+            <div style="display:flex;flex-direction:column;gap:4px"><div style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">想定時間</div><div style="font:700 15px 'JetBrains Mono',monospace">約90分</div></div>
+            <div style="display:flex;flex-direction:column;gap:4px"><div style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">使用回数</div><div style="font:700 15px 'JetBrains Mono',monospace">312</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:grid;grid-template-columns:32px 1fr 100px;padding:12px 14px;border:1px solid oklch(0.9 0.005 60);border-radius:8px;align-items:center"><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">1</span><span style="font:500 14px 'Zen Kaku Gothic New',sans-serif">Frog 1</span><span style="display:flex;align-items:center;gap:6px;font:500 12px 'JetBrains Mono',monospace"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.55 0.1 55)"></span>846</span></div>
+            <div style="display:grid;grid-template-columns:32px 1fr 100px;padding:12px 14px;border:1px solid oklch(0.9 0.005 60);border-radius:8px;align-items:center"><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">2</span><span style="font:500 14px 'Zen Kaku Gothic New',sans-serif">Vacation</span><span style="display:flex;align-items:center;gap:6px;font:500 12px 'JetBrains Mono',monospace"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.68 0.16 145)"></span>1042</span></div>
+            <div style="display:grid;grid-template-columns:32px 1fr 100px;padding:12px 14px;border:1px solid oklch(0.9 0.005 60);border-radius:8px;align-items:center;opacity:0.6"><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">…</span><span style="font:500 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">他 4 問（未挑戦の問題は詳細を控える）</span><span></span></div>
+          </div>
+        </div>
+        <div style="background:oklch(0.22 0.01 60);padding:40px 48px;display:flex;flex-direction:column;gap:20px;position:relative;overflow:hidden">
+          <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:999px;border:30px solid oklch(0.68 0.16 45 / 0.4)"></div>
+          <div style="font:900 42px/1.25 'Zen Kaku Gothic New',sans-serif;color:#fff;position:relative">DP<br>入門</div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:auto;position:relative">
+            <div style="text-align:center;font:700 14px 'Zen Kaku Gothic New',sans-serif;color:#0f0e0d;background:oklch(0.68 0.16 45);border-radius:8px;padding:14px">このセットで練習する</div>
+            <div style="text-align:center;font:700 13px 'Zen Kaku Gothic New',sans-serif;color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:8px;padding:13px">友達と対戦する</div>
+            <div style="display:flex;gap:10px;margin-top:6px">
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;font:500 13px 'Zen Kaku Gothic New',sans-serif;color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:12px">♡ 87</div>
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;font:500 13px 'Zen Kaku Gothic New',sans-serif;color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:12px">▣ 保存</div>
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:7px;font:500 13px 'Zen Kaku Gothic New',sans-serif;color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:12px">共有</div>
+            </div>
+            <div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:rgba(255,255,255,0.55);margin-top:4px">kenta_ac が作成 · 更新 3日前</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:24px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.55 0.15 45);margin:0 0 6px">12 / SCREEN MOCKS</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0 0 6px">マイページ・検索・作成（追加指定を反映）</h2><p style="font:400 14px/1.7 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);margin:0;max-width:52em">カードは全画面共通のシンプル形式に統一（タイトル太字・左上／カテゴリ・作者／いいね数・右）。作成画面は条件生成ではなく、Problems（正データ）を検索してヒットを追加していく構成に変更。</p>
+    </div>
+
+    <div style="width:1440px;background:oklch(0.99 0.004 60);border:1px solid oklch(0.9 0.005 60);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.08)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.9 0.005 60);display:flex;align-items:center;gap:22px;padding:0 24px;background:#fff">
+        <div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.68 0.16 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif">Custom Contest</span></div>
+        <div style="display:flex;gap:18px;font:500 13px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)"><span>Discover</span><span>作る</span><span style="color:oklch(0.22 0.01 60);border-bottom:2px solid oklch(0.68 0.16 45);padding-bottom:19px;margin-bottom:-21px">マイページ</span></div>
+      </div>
+      <div style="padding:32px 32px 0;display:flex;flex-direction:column;gap:4px">
+        <div style="font:900 26px/1.3 'Zen Kaku Gothic New',sans-serif">マイページ</div>
+      </div>
+      <div style="padding:20px 32px 0;display:flex;gap:28px;border-bottom:1px solid oklch(0.9 0.005 60)">
+        <div style="font:700 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.22 0.01 60);border-bottom:2px solid oklch(0.68 0.16 45);padding-bottom:14px">作成したセット <span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">8</span></div>
+        <div style="font:500 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60);padding-bottom:14px">いいねしたセット <span style="font:500 12px 'JetBrains Mono',monospace">23</span></div>
+        <div style="font:500 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60);padding-bottom:14px">ブックマーク <span style="font:500 12px 'JetBrains Mono',monospace">12</span></div>
+        <div style="font:500 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60);padding-bottom:14px">進行中 <span style="font:500 12px 'JetBrains Mono',monospace">2</span></div>
+      </div>
+
+      <div style="padding:24px 32px 40px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+        <div style="border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif">DP入門セット</div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">DP・EDPC</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">kenta_ac</span></div>
+            <span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">♡ 87</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:2px"><span style="font:600 10px 'JetBrains Mono',monospace;color:#fff;background:oklch(0.4 0.01 60);border-radius:999px;padding:4px 8px">公開</span></div>
+        </div>
+        <div style="border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif">ABC C 良問6選</div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">全探索</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">kenta_ac</span></div>
+            <span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">♡ 61</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:2px"><span style="font:600 10px 'JetBrains Mono',monospace;color:oklch(0.68 0.16 45);background:oklch(0.97 0.03 45);border-radius:999px;padding:4px 8px">限定公開</span></div>
+        </div>
+        <div style="border:1px dashed oklch(0.85 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.98 0.004 60)">
+          <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60)">グラフ入門（無題）</div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.6 0.01 60)">グラフ</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">3問構成中</span></div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:2px"><span style="font:600 10px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60);background:oklch(0.94 0.005 60);border-radius:999px;padding:4px 8px">下書き</span></div>
+        </div>
+        <div style="border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+          <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif">緑になる前に解きたい10問</div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">典型</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">kenta_ac</span></div>
+            <span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">♡ 342</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:2px"><span style="font:600 10px 'JetBrains Mono',monospace;color:#fff;background:oklch(0.4 0.01 60);border-radius:999px;padding:4px 8px">公開</span></div>
+        </div>
+      </div>
+      <div style="padding:0 32px 32px;font:400 12px/1.7 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">カード共通フォーマット：① タイトル（太字・左上）② カテゴリ／作者名（左下）③ いいね数（右）④ 公開状態の pill（作成したセットのみ）。いいね／ブックマークタブでは④の代わりに作成者名を主表示し、自分の公開状態 pill は出さない。</div>
+    </div>
+
+    <div style="width:1440px;background:oklch(0.99 0.004 60);border:1px solid oklch(0.9 0.005 60);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.08)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.9 0.005 60);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#fff">
+        <div style="display:flex;align-items:center;gap:22px">
+          <div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.68 0.16 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif">Custom Contest</span></div>
+          <div style="display:flex;gap:18px;font:500 13px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.22 0.01 60)"><span style="border-bottom:2px solid oklch(0.68 0.16 45);padding-bottom:19px;margin-bottom:-21px">Discover</span><span style="color:oklch(0.5 0.01 60)">作る</span><span style="color:oklch(0.5 0.01 60)">マイページ</span></div>
+        </div>
+        <div style="width:26px;height:26px;border-radius:999px;background:oklch(0.9 0.005 60)"></div>
+      </div>
+      <div style="padding:22px 32px 0">
+        <div style="background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:12px 14px;font:400 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60);max-width:520px">⌕ セット・作成者・タグで検索</div>
+      </div>
+      <div style="padding:16px 32px 22px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid oklch(0.93 0.005 60)">
+        <span style="font:600 12px 'Zen Kaku Gothic New',sans-serif;color:#fff;background:oklch(0.68 0.16 45);border-radius:999px;padding:8px 13px">すべて</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 13px">DP</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 13px">グラフ</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 13px">数学</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 13px">典型90</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 13px">初級向け</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 13px">短時間</span>
+      </div>
+
+      <div style="padding:28px 32px 8px;display:flex;flex-direction:column;gap:14px">
+        <div style="font:700 16px 'Zen Kaku Gothic New',sans-serif">新着の問題セット</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+          <div style="border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+            <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif">二分探索まとめ7問</div>
+            <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">二分探索</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">tk_algo</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">♡ 4</span></div>
+          </div>
+          <div style="border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+            <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif">今週のABC Cまとめ</div>
+            <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">全探索</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">sora__</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">♡ 9</span></div>
+          </div>
+          <div style="border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+            <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif">Graph Sprint</div>
+            <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">グラフ</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">mio_p</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">♡ 15</span></div>
+          </div>
+          <div style="border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+            <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif">典型90 ★2セレクト</div>
+            <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">典型</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">tk_algo</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">♡ 2</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:12px 32px 36px;display:flex;flex-direction:column;gap:14px">
+        <div style="font:700 16px 'Zen Kaku Gothic New',sans-serif">いいね数が多い問題セット</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+          <div style="border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+            <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif">緑になる前に解きたい10問</div>
+            <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">典型</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">mio_p</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.68 0.16 45)">♡ 342</span></div>
+          </div>
+          <div style="border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+            <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif">DP入門セット</div>
+            <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">DP</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">kenta_ac</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.68 0.16 45)">♡ 87</span></div>
+          </div>
+          <div style="border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+            <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif">ABC C 良問6選</div>
+            <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">全探索</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">sora__</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.68 0.16 45)">♡ 61</span></div>
+          </div>
+          <div style="border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+            <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif">典型90 ★4だけ5問</div>
+            <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">典型</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">tk_algo</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.68 0.16 45)">♡ 55</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:0 32px 36px;display:flex;flex-direction:column;gap:14px;border-top:1px solid oklch(0.93 0.005 60);padding-top:24px">
+        <div style="display:flex;align-items:center;justify-content:space-between"><div style="font:700 16px 'Zen Kaku Gothic New',sans-serif">「DP」の検索結果 <span style="font:400 13px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">14件</span></div><div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:8px 13px">人気順 ▾</div></div>
+        <div style="font:400 12px/1.6 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">検索・タグ選択時は特集グリッドから「類似セットの一覧」に切り替わる（07章のリスト密度パターンを使用）。</div>
+      </div>
+    </div>
+
+    <div style="width:1440px;background:oklch(0.99 0.004 60);border:1px solid oklch(0.9 0.005 60);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.08)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.9 0.005 60);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#fff">
+        <div style="display:flex;align-items:center;gap:22px"><div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.68 0.16 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif">Custom Contest</span></div><span style="font:500 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.55 0.01 60)">問題セットを作成</span></div>
+        <div style="display:flex;gap:12px"><span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">下書き保存</span><span style="font:700 13px 'Zen Kaku Gothic New',sans-serif;color:#fff;background:oklch(0.68 0.16 45);border-radius:8px;padding:9px 16px">保存する</span></div>
+      </div>
+
+      <div style="padding:28px 40px 0;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:8px;max-width:640px">
+          <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">問題セットタイトル</div>
+          <div style="font:700 20px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.22 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:10px;padding:14px 16px">DP入門セット</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">タグ（押して有効化）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="font:600 12px 'Zen Kaku Gothic New',sans-serif;color:#fff;background:oklch(0.68 0.16 45);border-radius:999px;padding:8px 14px">✓ DP</span>
+            <span style="font:600 12px 'Zen Kaku Gothic New',sans-serif;color:#fff;background:oklch(0.68 0.16 45);border-radius:999px;padding:8px 14px">✓ 初級</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 14px">グラフ</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 14px">数学</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 14px">二分探索</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 14px">典型90</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 14px">中級</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:999px;padding:8px 14px">短時間</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:24px 40px 40px;display:grid;grid-template-columns:1fr 380px;gap:24px">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="font:700 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60)">Problems を検索して追加</div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;background:oklch(0.97 0.006 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:12px 14px;font:400 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">⌕ 問題名・番号・タグで検索（例: EDPC, ABC300 C, 二分探索）</div>
+            <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60);border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:12px 14px;white-space:nowrap">Diff 帯 ▾</div>
+          </div>
+          <div style="display:flex;flex-direction:column;border:1px solid oklch(0.9 0.005 60);border-radius:10px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;padding:11px 16px;background:oklch(0.97 0.006 60);border-bottom:1px solid oklch(0.9 0.005 60);font:700 11px 'JetBrains Mono',monospace;letter-spacing:0.05em;color:oklch(0.5 0.01 60)"><div>問題</div><div>Diff</div><div>出典</div><div></div></div>
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;padding:13px 16px;border-bottom:1px solid oklch(0.94 0.005 60);align-items:center"><div style="display:flex;flex-direction:column;gap:2px"><span style="font:700 13px 'Zen Kaku Gothic New',sans-serif">Frog 2</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">EDPC B</span></div><div style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace">1103</span></div><div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">DP</div><div style="font:700 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.68 0.16 45)">＋ 追加</div></div>
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;padding:13px 16px;border-bottom:1px solid oklch(0.94 0.005 60);align-items:center"><div style="display:flex;flex-direction:column;gap:2px"><span style="font:700 13px 'Zen Kaku Gothic New',sans-serif">Knapsack 2</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">EDPC E</span></div><div style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace">1240</span></div><div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">DP</div><div style="font:700 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.68 0.16 45)">＋ 追加</div></div>
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;padding:13px 16px;align-items:center;background:oklch(0.97 0.03 45)"><div style="display:flex;flex-direction:column;gap:2px"><span style="font:700 13px 'Zen Kaku Gothic New',sans-serif">Slimes</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.5 0.02 45)">EDPC N</span></div><div style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace">1198</span></div><div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.02 45)">DP</div><div style="font:700 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.68 0.16 45)">✓ 追加済み</div></div>
+          </div>
+          <div style="font:400 12px/1.6 'Zen Kaku Gothic New',sans-serif;color:oklch(0.5 0.01 60)">Problems 上の問題を正データとして検索し、ヒットを1件ずつ追加する。ランダム生成は行わない。</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between"><div style="font:700 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.4 0.01 60)">追加済み（3問）</div><div style="font:400 12px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">並び替え可</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:11px 12px"><span style="font:400 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.005 60)">⠿</span><span style="flex:1;font:600 13px 'Zen Kaku Gothic New',sans-serif">Frog 1</span><span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.55 0.1 55)"></span><span style="font:500 11px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">846</span></span><span style="font:400 13px 'JetBrains Mono',monospace;color:oklch(0.7 0.005 60)">✕</span></div>
+            <div style="display:flex;align-items:center;gap:10px;border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:11px 12px"><span style="font:400 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.005 60)">⠿</span><span style="flex:1;font:600 13px 'Zen Kaku Gothic New',sans-serif">Vacation</span><span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 11px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">1042</span></span><span style="font:400 13px 'JetBrains Mono',monospace;color:oklch(0.7 0.005 60)">✕</span></div>
+            <div style="display:flex;align-items:center;gap:10px;border:1px solid oklch(0.9 0.005 60);border-radius:8px;padding:11px 12px"><span style="font:400 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.005 60)">⠿</span><span style="flex:1;font:600 13px 'Zen Kaku Gothic New',sans-serif">Slimes</span><span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 11px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">1198</span></span><span style="font:400 13px 'JetBrains Mono',monospace;color:oklch(0.7 0.005 60)">✕</span></div>
+          </div>
+          <div style="border-top:1px solid oklch(0.93 0.005 60);padding-top:14px;display:flex;flex-direction:column;gap:6px;font:400 12px/1.7 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">Difficulty 846–1198<br>公開範囲: 未設定（保存時に選択）</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);max-width:52em">
+      <b>08章からの変更点:</b> 作成は「条件から自動生成」ではなく「Problems を検索して1問ずつ追加」する方式に変更。タグは事前定義された一覧をトグルする形式（自由入力ではない）。08章のステップ構成（方法選択→条件→調整→保存→確認）は「タグ設定→問題検索・追加→保存」の3ステップに簡略化できる想定。ステップ数の最終形は次のラウンドで確定する。
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:24px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.72 0.17 45);margin:0 0 6px">13 / DARK MODE</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0 0 6px">同じ3画面のダークモード</h2><p style="font:400 14px/1.7 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);margin:0;max-width:52em">レイアウト・情報構成は同一。05章のダークトークンをそのまま適用。</p></div>
+
+    <div style="width:1440px;background:oklch(0.19 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.35)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.32 0.012 60);display:flex;align-items:center;gap:22px;padding:0 24px;background:oklch(0.24 0.012 60)">
+        <div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.75 0.17 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">Custom Contest</span></div>
+        <div style="display:flex;gap:18px;font:500 13px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)"><span>Discover</span><span>作る</span><span style="color:oklch(0.94 0.005 60);border-bottom:2px solid oklch(0.75 0.17 45);padding-bottom:19px;margin-bottom:-21px">マイページ</span></div>
+      </div>
+      <div style="padding:32px 32px 0;display:flex;flex-direction:column;gap:4px">
+        <div style="font:900 26px/1.3 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">マイページ</div>
+      </div>
+      <div style="padding:20px 32px 0;display:flex;gap:28px;border-bottom:1px solid oklch(0.32 0.012 60)">
+        <div style="font:700 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60);border-bottom:2px solid oklch(0.75 0.17 45);padding-bottom:14px">作成したセット <span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">8</span></div>
+        <div style="font:500 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);padding-bottom:14px">いいねしたセット <span style="font:500 12px 'JetBrains Mono',monospace">23</span></div>
+        <div style="font:500 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);padding-bottom:14px">ブックマーク <span style="font:500 12px 'JetBrains Mono',monospace">12</span></div>
+        <div style="font:500 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);padding-bottom:14px">進行中 <span style="font:500 12px 'JetBrains Mono',monospace">2</span></div>
+      </div>
+      <div style="padding:24px 32px 40px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+        <div style="border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.24 0.012 60)">
+          <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">DP入門セット</div>
+          <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">DP・EDPC</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">kenta_ac</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">♡ 87</span></div>
+          <div style="display:flex;gap:6px;margin-top:2px"><span style="font:600 10px 'JetBrains Mono',monospace;color:oklch(0.19 0.01 60);background:oklch(0.65 0.01 60);border-radius:999px;padding:4px 8px">公開</span></div>
+        </div>
+        <div style="border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.24 0.012 60)">
+          <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">ABC C 良問6選</div>
+          <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">全探索</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">kenta_ac</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">♡ 61</span></div>
+          <div style="display:flex;gap:6px;margin-top:2px"><span style="font:600 10px 'JetBrains Mono',monospace;color:oklch(0.75 0.17 45);background:oklch(0.3 0.04 45);border-radius:999px;padding:4px 8px">限定公開</span></div>
+        </div>
+        <div style="border:1px dashed oklch(0.4 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.22 0.011 60)">
+          <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">グラフ入門（無題）</div>
+          <div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.6 0.01 60)">グラフ</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">3問構成中</span></div>
+          <div style="display:flex;gap:6px;margin-top:2px"><span style="font:600 10px 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60);background:oklch(0.3 0.012 60);border-radius:999px;padding:4px 8px">下書き</span></div>
+        </div>
+        <div style="border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.24 0.012 60)">
+          <div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">緑になる前に解きたい10問</div>
+          <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">典型</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">kenta_ac</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">♡ 342</span></div>
+          <div style="display:flex;gap:6px;margin-top:2px"><span style="font:600 10px 'JetBrains Mono',monospace;color:oklch(0.19 0.01 60);background:oklch(0.65 0.01 60);border-radius:999px;padding:4px 8px">公開</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:1440px;background:oklch(0.19 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.35)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.32 0.012 60);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:oklch(0.24 0.012 60)">
+        <div style="display:flex;align-items:center;gap:22px"><div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.75 0.17 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">Custom Contest</span></div><div style="display:flex;gap:18px;font:500 13px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)"><span style="border-bottom:2px solid oklch(0.75 0.17 45);padding-bottom:19px;margin-bottom:-21px">Discover</span><span style="color:oklch(0.65 0.01 60)">作る</span><span style="color:oklch(0.65 0.01 60)">マイページ</span></div></div>
+        <div style="width:26px;height:26px;border-radius:999px;background:oklch(0.32 0.012 60)"></div>
+      </div>
+      <div style="padding:22px 32px 0">
+        <div style="background:oklch(0.24 0.012 60);border:1px solid oklch(0.32 0.012 60);border-radius:8px;padding:12px 14px;font:400 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);max-width:520px">⌕ セット・作成者・タグで検索</div>
+      </div>
+      <div style="padding:16px 32px 22px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid oklch(0.32 0.012 60)">
+        <span style="font:600 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.19 0.01 60);background:oklch(0.75 0.17 45);border-radius:999px;padding:8px 13px">すべて</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 13px">DP</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 13px">グラフ</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 13px">数学</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 13px">典型90</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 13px">初級向け</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 13px">短時間</span>
+      </div>
+      <div style="padding:28px 32px 8px;display:flex;flex-direction:column;gap:14px">
+        <div style="font:700 16px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">新着の問題セット</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+          <div style="border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.24 0.012 60)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">二分探索まとめ7問</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">二分探索</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">tk_algo</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">♡ 4</span></div></div>
+          <div style="border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.24 0.012 60)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">今週のABC Cまとめ</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">全探索</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">sora__</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">♡ 9</span></div></div>
+          <div style="border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.24 0.012 60)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">Graph Sprint</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">グラフ</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">mio_p</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">♡ 15</span></div></div>
+          <div style="border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.24 0.012 60)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">典型90 ★2セレクト</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">典型</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">tk_algo</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.01 60)">♡ 2</span></div></div>
+        </div>
+      </div>
+      <div style="padding:12px 32px 36px;display:flex;flex-direction:column;gap:14px">
+        <div style="font:700 16px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">いいね数が多い問題セット</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+          <div style="border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.24 0.012 60)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">緑になる前に解きたい10問</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">典型</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">mio_p</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.75 0.17 45)">♡ 342</span></div></div>
+          <div style="border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.24 0.012 60)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">DP入門セット</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">DP</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">kenta_ac</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.75 0.17 45)">♡ 87</span></div></div>
+          <div style="border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.24 0.012 60)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">ABC C 良問6選</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">全探索</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">sora__</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.75 0.17 45)">♡ 61</span></div></div>
+          <div style="border:1px solid oklch(0.32 0.012 60);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.24 0.012 60)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">典型90 ★4だけ5問</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">典型</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">tk_algo</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.75 0.17 45)">♡ 55</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:1440px;background:oklch(0.19 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.35)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.32 0.012 60);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:oklch(0.24 0.012 60)">
+        <div style="display:flex;align-items:center;gap:22px"><div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.75 0.17 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">Custom Contest</span></div><span style="font:500 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">問題セットを作成</span></div>
+        <div style="display:flex;gap:12px"><span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">下書き保存</span><span style="font:700 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.19 0.01 60);background:oklch(0.75 0.17 45);border-radius:8px;padding:9px 16px">保存する</span></div>
+      </div>
+      <div style="padding:28px 40px 0;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:8px;max-width:640px">
+          <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">問題セットタイトル</div>
+          <div style="font:700 20px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60);border:1px solid oklch(0.32 0.012 60);border-radius:10px;padding:14px 16px;background:oklch(0.24 0.012 60)">DP入門セット</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">タグ（押して有効化）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="font:600 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.19 0.01 60);background:oklch(0.75 0.17 45);border-radius:999px;padding:8px 14px">✓ DP</span>
+            <span style="font:600 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.19 0.01 60);background:oklch(0.75 0.17 45);border-radius:999px;padding:8px 14px">✓ 初級</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 14px">グラフ</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 14px">数学</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 14px">二分探索</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 14px">典型90</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 14px">中級</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:999px;padding:8px 14px">短時間</span>
+          </div>
+        </div>
+      </div>
+      <div style="padding:24px 40px 40px;display:grid;grid-template-columns:1fr 380px;gap:24px">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="font:700 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">Problems を検索して追加</div>
+          <div style="display:flex;gap:10px">
+            <div style="flex:1;background:oklch(0.24 0.012 60);border:1px solid oklch(0.32 0.012 60);border-radius:8px;padding:12px 14px;font:400 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">⌕ 問題名・番号・タグで検索（例: EDPC, ABC300 C, 二分探索）</div>
+            <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60);border:1px solid oklch(0.32 0.012 60);border-radius:8px;padding:12px 14px;white-space:nowrap">Diff 帯 ▾</div>
+          </div>
+          <div style="display:flex;flex-direction:column;border:1px solid oklch(0.32 0.012 60);border-radius:10px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;padding:11px 16px;background:oklch(0.24 0.012 60);border-bottom:1px solid oklch(0.32 0.012 60);font:700 11px 'JetBrains Mono',monospace;letter-spacing:0.05em;color:oklch(0.65 0.01 60)"><div>問題</div><div>Diff</div><div>出典</div><div></div></div>
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;padding:13px 16px;border-bottom:1px solid oklch(0.3 0.012 60);align-items:center;background:oklch(0.21 0.011 60)"><div style="display:flex;flex-direction:column;gap:2px"><span style="font:700 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">Frog 2</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">EDPC B</span></div><div style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.85 0.005 60)">1103</span></div><div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">DP</div><div style="font:700 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.75 0.17 45)">＋ 追加</div></div>
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;padding:13px 16px;border-bottom:1px solid oklch(0.3 0.012 60);align-items:center;background:oklch(0.21 0.011 60)"><div style="display:flex;flex-direction:column;gap:2px"><span style="font:700 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">Knapsack 2</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">EDPC E</span></div><div style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.85 0.005 60)">1240</span></div><div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">DP</div><div style="font:700 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.75 0.17 45)">＋ 追加</div></div>
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;padding:13px 16px;align-items:center;background:oklch(0.3 0.04 45)"><div style="display:flex;flex-direction:column;gap:2px"><span style="font:700 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">Slimes</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.75 0.03 45)">EDPC N</span></div><div style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.85 0.005 60)">1198</span></div><div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.75 0.03 45)">DP</div><div style="font:700 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.75 0.17 45)">✓ 追加済み</div></div>
+          </div>
+          <div style="font:400 12px/1.6 'Zen Kaku Gothic New',sans-serif;color:oklch(0.6 0.01 60)">Problems 上の問題を正データとして検索し、ヒットを1件ずつ追加する。ランダム生成は行わない。</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between"><div style="font:700 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.65 0.01 60)">追加済み（3問）</div><div style="font:400 12px 'JetBrains Mono',monospace;color:oklch(0.55 0.01 60)">並び替え可</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;border:1px solid oklch(0.32 0.012 60);border-radius:8px;padding:11px 12px;background:oklch(0.24 0.012 60)"><span style="font:400 12px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">⠿</span><span style="flex:1;font:600 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">Frog 1</span><span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.55 0.1 55)"></span><span style="font:500 11px 'JetBrains Mono',monospace;color:oklch(0.75 0.01 60)">846</span></span><span style="font:400 13px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">✕</span></div>
+            <div style="display:flex;align-items:center;gap:10px;border:1px solid oklch(0.32 0.012 60);border-radius:8px;padding:11px 12px;background:oklch(0.24 0.012 60)"><span style="font:400 12px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">⠿</span><span style="flex:1;font:600 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">Vacation</span><span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 11px 'JetBrains Mono',monospace;color:oklch(0.75 0.01 60)">1042</span></span><span style="font:400 13px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">✕</span></div>
+            <div style="display:flex;align-items:center;gap:10px;border:1px solid oklch(0.32 0.012 60);border-radius:8px;padding:11px 12px;background:oklch(0.24 0.012 60)"><span style="font:400 12px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">⠿</span><span style="flex:1;font:600 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.94 0.005 60)">Slimes</span><span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 11px 'JetBrains Mono',monospace;color:oklch(0.75 0.01 60)">1198</span></span><span style="font:400 13px 'JetBrains Mono',monospace;color:oklch(0.5 0.01 60)">✕</span></div>
+          </div>
+          <div style="border-top:1px solid oklch(0.32 0.012 60);padding-top:14px;display:flex;flex-direction:column;gap:6px;font:400 12px/1.7 'JetBrains Mono',monospace;color:oklch(0.6 0.01 60)">Difficulty 846–1198<br>公開範囲: 未設定（保存時に選択）</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:24px">
+    <div><div style="font:700 12px/1 'JetBrains Mono',monospace;letter-spacing:0.12em;color:oklch(0.72 0.14 45);margin:0 0 6px">14 / DARK MODE — ALT</div><h2 style="font:700 24px/1.3 'Zen Kaku Gothic New',sans-serif;margin:0 0 6px">比較用: ソフトグレー版ダークモード</h2><p style="font:400 14px/1.7 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);margin:0;max-width:52em">13章（近黒チャコール）に対する別方向。中間グレー（gray-800相当・無彩色寄り）を背景にした、柔らかく明るいダーク。13章と並べて比較用。どちらか一方を正式採用する想定で、混在はしない。</p></div>
+
+    <div style="width:1440px;background:oklch(0.28 0.035 258);border:1px solid oklch(0.44 0.045 258);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.3)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.44 0.045 258);display:flex;align-items:center;gap:22px;padding:0 24px;background:oklch(0.33 0.04 258)">
+        <div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.72 0.14 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">Custom Contest</span></div>
+        <div style="display:flex;gap:18px;font:500 13px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)"><span>Discover</span><span>作る</span><span style="color:oklch(0.96 0.012 255);border-bottom:2px solid oklch(0.72 0.14 45);padding-bottom:19px;margin-bottom:-21px">マイページ</span></div>
+      </div>
+      <div style="padding:32px 32px 0"><div style="font:900 26px/1.3 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">マイページ</div></div>
+      <div style="padding:20px 32px 0;display:flex;gap:28px;border-bottom:1px solid oklch(0.44 0.045 258)">
+        <div style="font:700 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255);border-bottom:2px solid oklch(0.72 0.14 45);padding-bottom:14px">作成したセット <span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.78 0.025 255)">8</span></div>
+        <div style="font:500 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255);padding-bottom:14px">いいねしたセット <span style="font:500 12px 'JetBrains Mono',monospace">23</span></div>
+        <div style="font:500 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255);padding-bottom:14px">ブックマーク <span style="font:500 12px 'JetBrains Mono',monospace">12</span></div>
+        <div style="font:500 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255);padding-bottom:14px">進行中 <span style="font:500 12px 'JetBrains Mono',monospace">2</span></div>
+      </div>
+      <div style="padding:24px 32px 40px;display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+        <div style="border:1px solid oklch(0.44 0.045 258);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.33 0.04 258)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">DP入門セット</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">DP・EDPC</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.68 0.025 255)">kenta_ac</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.78 0.025 255)">♡ 87</span></div><span style="font:600 10px 'JetBrains Mono',monospace;color:oklch(0.2 0.035 258);background:oklch(0.78 0.025 255);border-radius:999px;padding:4px 8px;align-self:flex-start">公開</span></div>
+        <div style="border:1px solid oklch(0.44 0.045 258);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.33 0.04 258)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">ABC C 良問6選</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">全探索</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.68 0.025 255)">kenta_ac</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.78 0.025 255)">♡ 61</span></div><span style="font:600 10px 'JetBrains Mono',monospace;color:oklch(0.72 0.14 45);background:oklch(0.4 0.03 45);border-radius:999px;padding:4px 8px;align-self:flex-start">限定公開</span></div>
+        <div style="border:1px dashed oklch(0.5 0.045 258);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.31 0.038 258)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">グラフ入門（無題）</div><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.7 0.025 255)">グラフ</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.68 0.025 255)">3問構成中</span></div><span style="font:600 10px 'JetBrains Mono',monospace;color:oklch(0.78 0.025 255);background:oklch(0.44 0.045 258);border-radius:999px;padding:4px 8px;align-self:flex-start">下書き</span></div>
+        <div style="border:1px solid oklch(0.44 0.045 258);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.33 0.04 258)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">緑になる前に解きたい10問</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">典型</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.68 0.025 255)">kenta_ac</span></div><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.78 0.025 255)">♡ 342</span></div><span style="font:600 10px 'JetBrains Mono',monospace;color:oklch(0.2 0.035 258);background:oklch(0.78 0.025 255);border-radius:999px;padding:4px 8px;align-self:flex-start">公開</span></div>
+      </div>
+    </div>
+
+    <div style="width:1440px;background:oklch(0.28 0.035 258);border:1px solid oklch(0.44 0.045 258);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.3)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.44 0.045 258);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:oklch(0.33 0.04 258)">
+        <div style="display:flex;align-items:center;gap:22px"><div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.72 0.14 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">Custom Contest</span></div><div style="display:flex;gap:18px;font:500 13px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)"><span style="border-bottom:2px solid oklch(0.72 0.14 45);padding-bottom:19px;margin-bottom:-21px">Discover</span><span style="color:oklch(0.78 0.025 255)">作る</span><span style="color:oklch(0.78 0.025 255)">マイページ</span></div></div>
+        <div style="width:26px;height:26px;border-radius:999px;background:oklch(0.44 0.045 258)"></div>
+      </div>
+      <div style="padding:22px 32px 0"><div style="background:oklch(0.33 0.04 258);border:1px solid oklch(0.44 0.045 258);border-radius:8px;padding:12px 14px;font:400 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255);max-width:520px">⌕ セット・作成者・タグで検索</div></div>
+      <div style="padding:16px 32px 22px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid oklch(0.44 0.045 258)">
+        <span style="font:600 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.2 0.035 258);background:oklch(0.72 0.14 45);border-radius:999px;padding:8px 13px">すべて</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255);border:1px solid oklch(0.44 0.045 258);border-radius:999px;padding:8px 13px">DP</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255);border:1px solid oklch(0.44 0.045 258);border-radius:999px;padding:8px 13px">グラフ</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255);border:1px solid oklch(0.44 0.045 258);border-radius:999px;padding:8px 13px">数学</span>
+        <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255);border:1px solid oklch(0.44 0.045 258);border-radius:999px;padding:8px 13px">典型90</span>
+      </div>
+      <div style="padding:28px 32px 8px;display:flex;flex-direction:column;gap:14px">
+        <div style="font:700 16px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">いいね数が多い問題セット</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+          <div style="border:1px solid oklch(0.44 0.045 258);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.33 0.04 258)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">緑になる前に解きたい10問</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">典型</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.68 0.025 255)">mio_p</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.72 0.14 45)">♡ 342</span></div></div>
+          <div style="border:1px solid oklch(0.44 0.045 258);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.33 0.04 258)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">DP入門セット</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">DP</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.68 0.025 255)">kenta_ac</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.72 0.14 45)">♡ 87</span></div></div>
+          <div style="border:1px solid oklch(0.44 0.045 258);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.33 0.04 258)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">ABC C 良問6選</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">全探索</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.68 0.025 255)">sora__</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.72 0.14 45)">♡ 61</span></div></div>
+          <div style="border:1px solid oklch(0.44 0.045 258);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px;background:oklch(0.33 0.04 258)"><div style="font:700 15px/1.35 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">典型90 ★4だけ5問</div><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;flex-direction:column;gap:3px"><span style="font:500 11px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">典型</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.68 0.025 255)">tk_algo</span></div><span style="font:700 12px 'JetBrains Mono',monospace;color:oklch(0.72 0.14 45)">♡ 55</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="width:1440px;background:oklch(0.28 0.035 258);border:1px solid oklch(0.44 0.045 258);border-radius:14px;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,0.3)">
+      <div style="height:60px;border-bottom:1px solid oklch(0.44 0.045 258);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:oklch(0.33 0.04 258)">
+        <div style="display:flex;align-items:center;gap:22px"><div style="display:flex;align-items:center;gap:9px"><div style="width:18px;height:18px;background:oklch(0.72 0.14 45);border-radius:6px"></div><span style="font:900 15px/1 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">Custom Contest</span></div><span style="font:500 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">問題セットを作成</span></div>
+        <div style="display:flex;gap:12px"><span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">下書き保存</span><span style="font:700 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.2 0.035 258);background:oklch(0.72 0.14 45);border-radius:8px;padding:9px 16px">保存する</span></div>
+      </div>
+      <div style="padding:28px 40px 0;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;flex-direction:column;gap:8px;max-width:640px"><div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">問題セットタイトル</div><div style="font:700 20px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255);border:1px solid oklch(0.44 0.045 258);border-radius:10px;padding:14px 16px;background:oklch(0.33 0.04 258)">DP入門セット</div></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">タグ（押して有効化）</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span style="font:600 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.2 0.035 258);background:oklch(0.72 0.14 45);border-radius:999px;padding:8px 14px">✓ DP</span>
+            <span style="font:600 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.2 0.035 258);background:oklch(0.72 0.14 45);border-radius:999px;padding:8px 14px">✓ 初級</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255);border:1px solid oklch(0.44 0.045 258);border-radius:999px;padding:8px 14px">グラフ</span>
+            <span style="font:500 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255);border:1px solid oklch(0.44 0.045 258);border-radius:999px;padding:8px 14px">数学</span>
+          </div>
+        </div>
+      </div>
+      <div style="padding:24px 40px 40px;display:grid;grid-template-columns:1fr 380px;gap:24px">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="font:700 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">Problems を検索して追加</div>
+          <div style="display:flex;flex-direction:column;border:1px solid oklch(0.44 0.045 258);border-radius:10px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;padding:11px 16px;background:oklch(0.33 0.04 258);border-bottom:1px solid oklch(0.44 0.045 258);font:700 11px 'JetBrains Mono',monospace;letter-spacing:0.05em;color:oklch(0.78 0.025 255)"><div>問題</div><div>Diff</div><div>出典</div><div></div></div>
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;padding:13px 16px;border-bottom:1px solid oklch(0.4 0.045 258);align-items:center;background:oklch(0.3 0.038 258)"><div style="display:flex;flex-direction:column;gap:2px"><span style="font:700 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">Frog 2</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.72 0.025 255)">EDPC B</span></div><div style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.92 0.015 255)">1103</span></div><div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">DP</div><div style="font:700 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.72 0.14 45)">＋ 追加</div></div>
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 70px;padding:13px 16px;align-items:center;background:oklch(0.4 0.03 45)"><div style="display:flex;flex-direction:column;gap:2px"><span style="font:700 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">Slimes</span><span style="font:400 11px 'JetBrains Mono',monospace;color:oklch(0.8 0.03 45)">EDPC N</span></div><div style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 12px 'JetBrains Mono',monospace;color:oklch(0.92 0.015 255)">1198</span></div><div style="font:400 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.8 0.03 45)">DP</div><div style="font:700 12px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.72 0.14 45)">✓ 追加済み</div></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="font:700 14px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.78 0.025 255)">追加済み（2問）</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;border:1px solid oklch(0.44 0.045 258);border-radius:8px;padding:11px 12px;background:oklch(0.33 0.04 258)"><span style="font:400 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.025 255)">⠿</span><span style="flex:1;font:600 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">Frog 1</span><span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.55 0.1 55)"></span><span style="font:500 11px 'JetBrains Mono',monospace;color:oklch(0.84 0.02 255)">846</span></span><span style="font:400 13px 'JetBrains Mono',monospace;color:oklch(0.65 0.025 255)">✕</span></div>
+            <div style="display:flex;align-items:center;gap:10px;border:1px solid oklch(0.44 0.045 258);border-radius:8px;padding:11px 12px;background:oklch(0.33 0.04 258)"><span style="font:400 12px 'JetBrains Mono',monospace;color:oklch(0.65 0.025 255)">⠿</span><span style="flex:1;font:600 13px 'Zen Kaku Gothic New',sans-serif;color:oklch(0.96 0.012 255)">Vacation</span><span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:2px;background:oklch(0.68 0.16 145)"></span><span style="font:500 11px 'JetBrains Mono',monospace;color:oklch(0.84 0.02 255)">1042</span></span><span style="font:400 13px 'JetBrains Mono',monospace;color:oklch(0.65 0.025 255)">✕</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#fff;border:1px solid oklch(0.9 0.005 60);border-radius:12px;padding:26px;font:400 13px/1.8 'Zen Kaku Gothic New',sans-serif;color:oklch(0.45 0.01 60);max-width:52em">13章と14章の違い: 13章は暖色寄りの近黒チャコール（コントラスト強め・引き締まった印象）、14章は無彩色のミッドグレー（gray-800相当・柔らかく圧迫感が少ない印象）。どちらも情報階層とアクセント（橙）の使い方は同一で、背景・サーフェスの明度と色温度だけが異なる。</div>
+  </section>
+
+</div>
+</x-dc>
+</body>
+</html>

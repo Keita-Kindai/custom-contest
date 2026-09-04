@@ -1,7 +1,86 @@
 # Design open questions
 
-Claude Designの成果物を受け取った時点で追記します。
+`design_handoff_ac_duel_bo1` を 2026-09-03 に受領し、Grilling を開始しました。
 
 | ID | 画面 / component | 判断点 | 担当 | 状態 |
 | --- | --- | --- | --- | --- |
-| DESIGN-001 | 全体 | 成果物待ち | Claude Design | Waiting |
+| DESIGN-001 | 全体 | Claude Design の成果物を受領する | Claude Design | Resolved |
+| DESIGN-002 | MVP全体 | 画面Handoffの「ローカルモックのUI試作」と `docs/product/mvp.md` の「サーバー同期・結果保存までの縦切り」のどちらを次の実装境界とするか | User | Resolved: 縦切りMVP |
+| DESIGN-003 | 参加者 / ログイン | 「ゲスト参加なし」と「ゲストが Room ID で参加」の用語と認証境界を統一する | User | Resolved: 招待参加者 |
+| DESIGN-004 | 勝敗確定 | 「一方の AC を取得した時点で終了」と「AtCoder の提出時刻が早い側の勝ち」を、ポーリングの遅延下でどう両立させるか | User | Resolved: サーバーへ先着した有効ACで即時確定 |
+| DESIGN-005 | Room / 対戦 / ラウンド | 再戦時に Room を再利用する前提で、結果を持つ単位と問題1問の単位を呼び分ける | User | Resolved: Room / Match / Round |
+| DESIGN-006 | スマートフォン | 参加リンクをスマートフォンで開いた場合に、対戦参加と Room 作成をどこまで許すか | User | Resolved: PC・タブレット限定 |
+| DESIGN-007 | Room招待 | Room IDだけでなく招待URLを主導線にするか | User | Resolved: URL + Room ID |
+| DESIGN-008 | Match結果 | Roomを再利用しても過去の結果を参照できるURL構造にするか | User | Resolved: Match専用URL |
+| DESIGN-009 | デモ操作 | Fake提出の操作を通常の対戦体験からどう分離するか | User | Resolved: 折りたたみ式 |
+| DESIGN-010 | AtCoder提出検知 | 日曜デモまでに実際のAC判定を必須にするか、上積み目標にするか | User | Resolved: userscriptで必須 |
+| DESIGN-011 | AtCoder連携 | userscriptとRoomの参加者をどう安全に対応付け、接続状態をどう見せるか | User | Resolved: 一回限りのfragment接続キー + 15秒heartbeat |
+| DESIGN-012 | 勝敗確定 | 同一秒のACを取りこぼさないため、最初のAC検知後にどの状態まで待つか | User | Resolved: 待機せず先着で確定、後着では変更しない |
+| DESIGN-013 | AtCoder連携 | ブラウザー拡張機能を使うか、インストール不要方式へ切り替えるか | User | Resolved: Tampermonkey userscript |
+| DESIGN-014 | AtCoder連携 | 対戦中にuserscript接続が途切れたとき、Matchとタイマーを停止するか | User | Resolved: 停止せず警告・自動再接続 |
+| DESIGN-015 | 時間切れ | 制限時間内の提出がWJのまま時間切れを迎えた場合、いつ結果を確定するか | User | Resolved: 最終判定を最大5分待機 |
+| DESIGN-016 | 画面同期 | 日曜デモでSocket.IO / WebSocketを導入するか、通常HTTPで定期取得するか | User | Resolved: 1秒HTTP polling |
+| DESIGN-017 | Room状態 | サーバーと各ブラウザーのどちらを共有状態の正本にするか | User | Resolved: 単一Next.jsサーバー |
+| DESIGN-018 | 切断 | Participantの一時切断を60秒後の不戦敗として扱うか | User | Resolved: 自動不戦敗なし、明示的なForfeitのみ |
+| DESIGN-019 | 問題公開 | HTTP polling下で問題を事前配信するか、START後の僅かな表示差を許容するか | User | Resolved: 事前配信せず数百ミリ秒程度を許容 |
+| DESIGN-020 | AtCoder ID | プロフィールとログイン中のAtCoder IDが異なる場合、および同一IDでの対戦を許可するか | User | Resolved: READY不可、同一ID参加不可 |
+| DESIGN-021 | Match開始 | 両者READYで自動開始するか、ホストの開始操作を必要とするか | User | Resolved: ホスト操作後に3秒countdown |
+| DESIGN-022 | 画面同期 | Room snapshotを取得できない場合、いつ警告し操作を止めるか | User | Resolved: 3秒で再接続表示・共有操作無効 |
+| DESIGN-023 | Forfeit | 誤操作を防ぎながら棄権をどう確定するか | User | Resolved: 対戦中の確認modal |
+| DESIGN-024 | Countdown | START前の取消を誰が行え、READY状態をどう戻すか | User | Resolved: どちらも取消可能、両者READY解除 |
+| DESIGN-025 | Room退出 | 明示的退出と一時切断をどう区別し、ホスト権限を譲渡するか | User | Resolved: Invitee席解放、HostはRoom終了、譲渡なし |
+| DESIGN-026 | 再戦 | Roomを再利用するか、条件と問題をどう引き継ぐか | User | Resolved: 両者承認、同条件、新規抽選 |
+| DESIGN-027 | Room寿命 | 接続のない待機Roomをいつ閉じるか | User | Resolved: 非対戦時に両者無接続30分 |
+| DESIGN-028 | userscript接続 | 一回限りの接続キーと継続利用する専用トークンの有効範囲 | User | Resolved: 5分・1回、Room退出/終了まで |
+| DESIGN-029 | 提出履歴 | userscriptから送信・保存する提出情報と、収集しない情報 | User | Resolved: 最小メタデータ、ソース本文・コード長なし |
+| DESIGN-030 | 通知再送 | 通信失敗時の再送、受信確認、重複通知をどう扱うか | User | Resolved: ACKまで再送、提出IDで重複排除 |
+| DESIGN-031 | 遅着通知 | 勝敗確定後に届いた正しい提出を履歴へ残すか | User | Resolved: 結果を変えず遅着として保存 |
+| DESIGN-032 | 信頼境界 | client側userscriptを改造した不正を初期段階でどこまで防ぐか | User | Resolved: 招待制カジュアル対戦、公開競技前に再検討 |
+| DESIGN-033 | READY条件 | heartbeatだけでなくAtCoderの読取成功を要求するか | User | Resolved: ログイン・ID一致・判定先アクセスを要求 |
+| DESIGN-034 | AtCoder導線 | 問題をどこで開き、判定取得に手動操作を必要とするか | User | Resolved: 別tabで開き自動検知 |
+| DESIGN-035 | 提出filter | 対象問題以外の提出を送信・保存するか | User | Resolved: clientで限定しserverで再検査 |
+| DESIGN-036 | 提出表示 | 対戦中に相手の提出詳細をどこまで見せるか | User | Resolved: 最新判定・回数・WJ、詳細は結果後 |
+| DESIGN-037 | Verdict表示 | OLEやIEを特別扱いするか、AtCoderの確定ラベルを表示するか | User | Resolved: 確定labelをそのまま表示、AC以外は非勝利 |
+| DESIGN-038 | 拒否通知 | serverがSubmission evidenceを拒否した理由を誰へどう見せるか | User | Resolved: 本人へ修正案、相手へ一般表示 |
+| DESIGN-039 | 信頼度表示 | client確認の結果を公式検証済みと区別するか | User | Resolved: userscript確認・カジュアル対戦 |
+| DESIGN-040 | ペナルティ | 不正解ごとの+1分を勝敗または表示へ使うか | User | Resolved: penaltyなし、提出・miss回数のみ |
+| DESIGN-041 | Fake提出 | Fake判定を公開版にも残すか | User | Resolved: LAN demo・開発・test限定 |
+| DESIGN-042 | 初回公開 | 招待制client確認版を先に公開するか、不正対策完成まで待つか | User | Resolved: 招待制casual版を先行公開 |
+| DESIGN-043 | VOID | 無効Matchを完全に破棄するか、原因と結果URLを保存するか | User | Resolved: 保存するが戦績対象外 |
+| DESIGN-044 | Match結果 | 結果URLを参加者限定にするか、URLを知る人へ限定公開するか | User | Resolved: 推測困難な限定公開link |
+| DESIGN-045 | Database access | SQLを直接扱うか、DrizzleまたはPrismaを使うか | User | Resolved: Drizzle + pg |
+| DESIGN-046 | Database境界 | プレイヤーのブラウザーがDBへ直接接続するか | User | Resolved: 両者ともAPIのみ、serverだけDB接続 |
+| DESIGN-047 | Match保存期間 | 完了Matchをいつ自動削除するか | User | Resolved: 90日、起動時・日次lazy cleanup |
+| DESIGN-048 | Database障害 | 対戦中に保存先が停止した場合、Matchを中断するか | User | Resolved: 継続し5秒再試行、保存まで再戦不可 |
+| DESIGN-049 | Test構成 | unit、API、browser、実AtCoder確認をどう分担するか | User | Resolved: Vitest + Playwright Chromium + 手動実提出 |
+| DESIGN-050 | Browser E2E | 2人フローと12状態をどこまで自動検証するか | User | Resolved: core flow assert + 状態screenshot |
+| DESIGN-051 | 実AtCoder確認 | 実提出を自動化するか、誰のデータで手動確認するか | User | Resolved: 本人操作、Litms・許可済み友人のみ |
+| DESIGN-052 | Screenshot証跡 | 起動から設定、Match、結果までの画面を残すか | User | Resolved: Playwrightで主要画面を保存 |
+| DESIGN-053 | 日曜問題範囲 | 参加者の習熟度に合わせてDifficultyを400〜800へ狭めるか | User | Resolved: ABC C/D・400〜1200を維持 |
+| DESIGN-054 | 既出問題 | 両者が過去に解いた問題を初期段階から除外するか | User | Resolved: 初期は許容、Problems連携時に再検討 |
+| DESIGN-055 | Rating表示 | 取得していないAtCoder Ratingを画面へ表示するか | User | Resolved: 初期は非表示 |
+| DESIGN-056 | 直近の対戦 | 限定公開結果をAtCoder IDで検索するか、端末内履歴だけにするか | User | Resolved: localの直近3件のみ |
+| DESIGN-057 | Difficulty表示 | 非公式Difficultyをどう表記し、欠損時にどうするか | User | Resolved: 目安表記、欠損時は非表示 |
+| DESIGN-058 | 問題source | 日曜のMatch開始時にAtCoder Problemsへ問い合わせるか | User | Resolved: 事前生成した固定JSON |
+| DESIGN-059 | 問題cache | 初回公開後のほぼ全問題を外部APIから毎回取得するか | User | Resolved: 定期取込したDB cache |
+| DESIGN-060 | Top | 問題セット等の未実装導線を初期画面へ置くか | User | Resolved: 対戦とlocal履歴だけ |
+| DESIGN-061 | Profile | Room参加中にAtCoder IDの変更を許すか | User | Resolved: Room外だけ、再接続必須 |
+| DESIGN-062 | 再抽選 | 同じRoomで同じ問題が続けて出ることを許すか | User | Resolved: 全候補消化まで重複なし |
+| DESIGN-063 | 問題利用不能 | START前後にAtCoder問題を開けない場合の結果 | User | Resolved: 前は再抽選、後はVOID |
+| DESIGN-064 | Invitee席 | 明示的に退出しないInviteeの席をホストが空けられるか | User | Resolved: Waiting中のみ確認modalで可能 |
+| DESIGN-065 | 日曜優先度 | 遅延時に何を残し何を後ろへ回すか | User | Resolved: 全項目を目指しgame成立順で実装 |
+| DESIGN-066 | Visual品質 | pixel一致とgame機能のどちらを日曜に優先するか | User | Resolved: game機能優先、visual細部は低優先 |
+| DESIGN-067 | AtCoder取得頻度 | heartbeatと提出pollによるAtCoderへの重複accessを許容するか | User | Resolved: 到達確認は最大15秒に1回、対戦中の提出確認は5秒に1回の単一loopとし、同時実行しない。接続専用のAtCoderトップタブだけで動かす |
+| DESIGN-068 | userscript接続表示 | AtCoder上の接続通知を常時表示するか | User | Resolved: 初回接続・再接続成功は4秒で消し、障害中だけ継続表示 |
+| DESIGN-069 | 勝敗表示 | LOSEをWINと同じgreenで表示するか | User | Resolved: LOSEは既存danger tokenのredにし、色に加えてLOSE文字も維持 |
+| DESIGN-070 | START遷移 | STARTと対戦画面の切替を即時にするか | User | Resolved: server上の開始時刻は変えず、live snapshot受信後もSTARTを0.8秒保持して画面だけ穏やかに切り替える |
+| DESIGN-071 | 精進 / 見た目 | 精進側と対戦側の配色・書体を統一するか | User | Resolved: primitive共有の2 skin。精進=light+橙、対戦=dark+緑（ADR-0007） |
+| DESIGN-072 | 精進 / 作成 | 作成ウィザードを条件生成（12章）とProblems検索（13章）のどちらにするか | User | Resolved: 13章のProblems検索して追加（ADR-0007） |
+| DESIGN-073 | 精進 / 導線 | トップ`/`を統合トップへ作り替えるか | User | Resolved: 当面触らず`/discover`等を独立入口にする。統合は日曜デモ後（ADR-0007） |
+| DESIGN-074 | 精進 / 認証 | 認証方式（メール / OAuth / AtCoder ID連携）と、未ログイン時に見せる範囲 | User | Open |
+| DESIGN-075 | 精進 / 公開範囲 | 限定公開リンクに期限や失効の仕組みを持たせるか | User | Open |
+| DESIGN-076 | 精進 / 指標 | いいね数と使用回数を誰にでも見せるか、作成者だけに見せるか | User | Open |
+| DESIGN-077 | 精進 / 運用 | 「公開停止」を誰がどの基準で行うか（運営判断 / 自動検知） | User | Open |
+| DESIGN-078 | 精進 / 複製 | セット複製時に元の公開範囲を継承するか、下書きへ落とすか | User | Open |
+| DESIGN-079 | 精進 / 問題data | 対戦の抽選poolと精進の検索poolをいつ一つのカタログへ統合するか | User | Open |
+| DESIGN-080 | 精進 / 対応幅 | Discoverとライブラリをモバイル幅の保証対象に含めるか | User | Open |

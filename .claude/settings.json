@@ -11,7 +11,8 @@
       "Bash(pnpm typecheck)",
       "Bash(pnpm test)",
       "Bash(pnpm build)",
-      "Bash(pnpm check)"
+      "Bash(pnpm check)",
+      "mcp__codegraph__*"
     ],
     "deny": [
       "Read(./.env)",
@@ -25,6 +26,18 @@
       "Bash(git clean *)",
       "Bash(git checkout *)",
       "Bash(git restore *)"
+    ]
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "codegraph prompt-hook"
+          }
+        ]
+      }
     ]
   }
 }

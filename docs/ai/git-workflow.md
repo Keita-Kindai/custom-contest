@@ -61,6 +61,32 @@ gh issue develop 123 --base main --name feat/123-short-description --checkout
 git switch -c feat/short-description
 ```
 
+## 追加worktreeを使う場合
+
+通常は追加worktreeを作らず、上記のとおり一つの作業場所でbranchを切ります。別件の未commit変更を保持したまま並行作業する必要がある場合だけ、理由と終了時の片付けまで説明してから追加worktreeを使います。
+
+```sh
+git worktree list
+git worktree add -b feat/short-description /tmp/custom-contest-short-description main
+```
+
+Gitでは一つのbranchを複数のworktreeへ同時にcheckoutできません。作業後に一時worktreeが残っていると、通常のrepositoryで`git switch feat/short-description`を実行した際に、次のようなエラーになります。
+
+```text
+fatal: 'feat/short-description' is already used by worktree at '/tmp/custom-contest-short-description'
+```
+
+作業完了後は、commitが残っていてworktreeがcleanなことを確認してから、Git自身のcommandで作業場所の登録とdirectoryを削除します。branchとcommitは削除されません。
+
+```sh
+git -C /tmp/custom-contest-short-description status --short --branch
+git -C /tmp/custom-contest-short-description log -1 --oneline
+git worktree remove /tmp/custom-contest-short-description
+git worktree list
+```
+
+未commit変更が表示された場合は削除せず、その内容を確認します。`git worktree remove --force`や`rm -rf`で回避しません。登録だけが壊れた場合に限り、原因確認後に`git worktree prune`を使います。
+
 ## 3. 実装とcommit
 
 作業中も`git status --short`で対象外の変更が混ざっていないか確認します。commit前に次を実行します。

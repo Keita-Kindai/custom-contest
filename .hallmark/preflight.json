@@ -1,0 +1,15 @@
+{
+  "date": "2026-09-03",
+  "project": "apps/web",
+  "font_stack": "M PLUS 1 + Roboto Mono requested by design handoff; system fallbacks allowed",
+  "palette": "warm dark surfaces with OKLCH green self/action and blue opponent accents",
+  "motion": "no motion dependency; state-only CSS motion with reduced-motion fallback",
+  "spacing": "4px token scale",
+  "framework": "Next.js 16.3.4 App Router + React 19.2.8 + TypeScript",
+  "preserved": [
+    "design_handoff_ac_duel_bo1 information hierarchy",
+    "high-fidelity live battle composition",
+    "existing globals.css bootstrap rules"
+  ]
+}
+

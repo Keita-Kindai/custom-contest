@@ -77,7 +77,7 @@
 | DESIGN-071 | 精進 / 見た目 | 精進側と対戦側の配色・書体を統一するか | User | Resolved: primitive共有の2 skin。精進=light+橙、対戦=dark+緑（ADR-0007） |
 | DESIGN-072 | 精進 / 作成 | 作成ウィザードを条件生成（12章）とProblems検索（13章）のどちらにするか | User | Resolved: 13章のProblems検索して追加（ADR-0007） |
 | DESIGN-073 | 精進 / 導線 | トップ`/`を統合トップへ作り替えるか | User | Resolved: 当面触らず`/discover`等を独立入口にする。統合は日曜デモ後（ADR-0007） |
-| DESIGN-074 | 精進 / 認証 | 認証方式（メール / OAuth / AtCoder ID連携）と、未ログイン時に見せる範囲 | User | Open |
+| DESIGN-074 | 精進 / 認証 | 認証方式（メール / OAuth / AtCoder ID連携）と、未ログイン時に見せる範囲 | User | Resolved: GitHub / GoogleのOAuthのみ。パスワードは保存しない。AtCoder IDは自己申告で認証に使わない（ADR-0009）。未ログイン時に見せる範囲は未決 |
 | DESIGN-075 | 精進 / 公開範囲 | 限定公開リンクに期限や失効の仕組みを持たせるか | User | Open |
 | DESIGN-076 | 精進 / 指標 | いいね数と使用回数を誰にでも見せるか、作成者だけに見せるか | User | Open |
 | DESIGN-077 | 精進 / 運用 | 「公開停止」を誰がどの基準で行うか（運営判断 / 自動検知） | User | Open |
@@ -86,3 +86,6 @@
 | DESIGN-080 | 精進 / 対応幅 | Discoverとライブラリをモバイル幅の保証対象に含めるか | User | Open |
 | DESIGN-081 | 精進 / 作成 | 作成をステップ式（12章の5 step）にするか、1画面（13章のモック）にするか | User | Open: 13章が「3ステップに簡略化できる想定。ステップ数の最終形は次のラウンドで確定」としているため、現状は1画面で実装 |
 | DESIGN-082 | 精進 / Difficulty | `is_experimental`のDifficulty推定値を表示するか伏せるか | User | Open: 現状は伏せて「—」を出す。ABC001〜のような古い回が該当 |
+| DESIGN-089 | 配備 | 公開先をVercelにするか、常駐processのhostにするか | User | Resolved: 常駐process（Fly.io / Render）+ Neon。Room stateがprocess内にあるためserverlessを採らない（ADR-0009） |
+| DESIGN-090 | 認証 | localStorageに残っている問題セットを、ログイン後のアカウントへどう引き継ぐか | User | Open |
+| DESIGN-091 | 認証 | Room作成と対戦参加にログインを必須にするか | User | Open: 現状は必須にしていない |

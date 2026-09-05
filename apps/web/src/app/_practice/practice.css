@@ -620,7 +620,7 @@
  * 問題名そのものが外部リンク。一覧に「AtCoderで開く」ボタンを並べるのをやめ、
  * クリック領域を問題名へ一本化した。
  */
-.problem-title-link {
+.practice-shell a.problem-title-link {
   color: var(--color-ink);
   font-weight: 500;
   text-decoration: underline;
@@ -628,7 +628,7 @@
   text-underline-offset: 3px;
 }
 
-.problem-title-link:hover {
+.practice-shell a.problem-title-link:hover {
   color: var(--color-accent-strong);
   text-decoration-color: var(--color-accent-strong);
 }

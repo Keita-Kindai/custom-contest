@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import {
+  SOLVE_STATUS_LABEL,
   VISIBILITY_LABEL,
   difficultyBand,
+  nextSolveStatus,
   type ProblemSetSummary,
   type ProblemSetTag,
+  type SolveStatus,
 } from "@custom-contest/contracts";
 
 /**
@@ -164,5 +167,75 @@ export function EmptyState({ title, hint }: { title: string; hint: string }) {
       <strong>{title}</strong>
       <p>{hint}</p>
     </div>
+  );
+}
+
+/**
+ * 問題名そのものをAtCoderの問題ページへのリンクにする。
+ * 一覧に「AtCoderで開く」ボタンを並べる代わりに、問題名をクリックする導線へ一本化した。
+ */
+export function ProblemTitleLink({
+  problemId,
+  contestId,
+  title,
+}: {
+  problemId: string;
+  contestId: string;
+  title: string;
+}) {
+  return (
+    <a
+      className="problem-title-link"
+      href={`https://atcoder.jp/contests/${contestId}/tasks/${problemId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {title}
+      <span className="problem-title-external" aria-hidden="true">
+        ↗
+      </span>
+      <span className="sr-only">（AtCoderで開く）</span>
+    </a>
+  );
+}
+
+/**
+ * 挑戦状態の3値トグル。押すたびに 未AC → 自力AC → 解説AC → 未AC と進む。
+ * 色だけに依存させないため、常に状態名を文字でも出す。
+ */
+export function SolveStatusControl({
+  status,
+  problemTitle,
+  onChange,
+}: {
+  status: SolveStatus;
+  problemTitle: string;
+  onChange: (next: SolveStatus) => void;
+}) {
+  return (
+    <button
+      className={`solve-status is-${status}`}
+      type="button"
+      onClick={() => onChange(nextSolveStatus(status))}
+      aria-label={`${problemTitle}の挑戦状態: ${SOLVE_STATUS_LABEL[status]}。押すと次の状態へ変わります`}
+    >
+      <span className="solve-status-mark" aria-hidden="true">
+        {status === "solved" ? "●" : status === "solved_with_editorial" ? "◐" : "○"}
+      </span>
+      {SOLVE_STATUS_LABEL[status]}
+    </button>
+  );
+}
+
+/** 押せない表示専用の挑戦状態。検索結果で「もう解いた問題か」を見るために使う。 */
+export function SolveStatusMarker({ status }: { status: SolveStatus }) {
+  if (status === "unsolved") return null;
+  return (
+    <span className={`solve-status is-readonly is-${status}`}>
+      <span className="solve-status-mark" aria-hidden="true">
+        {status === "solved" ? "●" : "◐"}
+      </span>
+      {SOLVE_STATUS_LABEL[status]}
+    </span>
   );
 }

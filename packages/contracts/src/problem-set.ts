@@ -190,3 +190,36 @@ export function difficultyBand(difficulty: number | null): DifficultyBand | null
   if (difficulty === null) return null;
   return DIFFICULTY_BANDS.find((band) => difficulty <= band.max) ?? null;
 }
+
+// --- Solve status -------------------------------------------------------------
+
+/**
+ * 挑戦状態。本人の自己申告であり、AtCoderの提出結果から自動で決まるものではない。
+ * 対戦側のSubmission evidence（外部から受け取った提出情報）とは別物として扱う。
+ */
+export const solveStatusSchema = z.enum(["unsolved", "solved", "solved_with_editorial"]);
+export type SolveStatus = z.infer<typeof solveStatusSchema>;
+
+export const SOLVE_STATUS_LABEL: Record<SolveStatus, string> = {
+  unsolved: "未AC",
+  solved: "自力AC",
+  solved_with_editorial: "解説AC",
+};
+
+/** 押すたびに次へ進む順序。未AC → 自力AC → 解説AC → 未AC。 */
+export const SOLVE_STATUS_ORDER: readonly SolveStatus[] = [
+  "unsolved",
+  "solved",
+  "solved_with_editorial",
+];
+
+export function nextSolveStatus(current: SolveStatus): SolveStatus {
+  const index = SOLVE_STATUS_ORDER.indexOf(current);
+  return SOLVE_STATUS_ORDER[(index + 1) % SOLVE_STATUS_ORDER.length]!;
+}
+
+/**
+ * problemIdをkeyにした挑戦状態。問題単位で持つため、同じ問題を複数のセットへ入れても状態は1つ。
+ * 記録のない問題は`unsolved`として扱う。
+ */
+export type SolveStatusMap = Record<string, SolveStatus>;

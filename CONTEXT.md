@@ -54,3 +54,7 @@ Matchの制限時間内にAtCoderへ提出されたものの、ACなどの最終
 
 **Unlisted Match result（限定公開の対戦結果）**:
 検索一覧や検索エンジンには掲載せず、推測困難なMatch URLを知る人だけが閲覧できる対戦結果。URLを受け取った人は閲覧できるが、Matchを編集する権限は得ない。
+
+**Solve status（挑戦状態）**:
+あるProblemに対する、本人の自己申告による攻略状態。値は`unsolved`（未AC）、`solved`（自力AC）、`solved_with_editorial`（解説AC）の3つ。本人が画面で切り替えるものであり、AtCoderの提出結果から自動で決まるものではない。
+_Avoid_: Submission evidence（外部から受け取った提出情報であり、自己申告ではない）

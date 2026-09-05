@@ -8,9 +8,18 @@ import {
   difficultyRangeOf,
   estimateMinutes,
   type ProblemSet,
+  type SolveStatus,
+  type SolveStatusMap,
 } from "@custom-contest/contracts";
 
-import { DifficultyDot, DifficultyRangeChip, EmptyState, TagPill } from "./components/atoms";
+import {
+  DifficultyDot,
+  DifficultyRangeChip,
+  EmptyState,
+  ProblemTitleLink,
+  SolveStatusControl,
+  TagPill,
+} from "./components/atoms";
 import { CURRENT_AUTHOR } from "./data/fixtures";
 import { problemSetRepository } from "./data/repository";
 import { usePracticeData } from "./use-practice-data";
@@ -27,12 +36,18 @@ export function SetDetailView({ setId }: { setId: string }) {
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
   const [shareStatus, setShareStatus] = useState("共有");
+  const [solveStatuses, setSolveStatuses] = useState<SolveStatusMap>({});
 
   useEffect(() => {
     void problemSetRepository.isLiked(setId).then(setLiked);
     void problemSetRepository.isBookmarked(setId).then(setBookmarked);
+    void problemSetRepository.solveStatuses().then(setSolveStatuses);
     void problemSetRepository.markRecent(setId);
   }, [setId]);
+
+  function changeSolveStatus(problemId: string, next: SolveStatus) {
+    void problemSetRepository.setSolveStatus(problemId, next).then(setSolveStatuses);
+  }
 
   if (loading) return <p className="practice-loading">読み込み中…</p>;
   if (!data) {
@@ -96,29 +111,35 @@ export function SetDetailView({ setId }: { setId: string }) {
 
           <div className="ps-section-heading">
             <h2>収録問題</h2>
-            <span className="ps-section-note">問題文はAtCoder上で読んでください</span>
+            <span className="ps-section-note">問題名を押すとAtCoderで開きます</span>
           </div>
 
           {set.problems.length === 0 ? (
             <EmptyState title="まだ問題がありません" hint="編集画面からProblemsを検索して追加できます。" />
           ) : (
             <div className="problem-list">
-              {set.problems.map((problem, index) => (
-                <div className="problem-list-row" key={problem.problemId}>
-                  <span className="problem-index">{index + 1}</span>
-                  <span className="problem-title">{problem.title}</span>
-                  <span className="problem-source">{problem.source}</span>
-                  <DifficultyDot difficulty={problem.difficulty} />
-                  <a
-                    className="problem-open"
-                    href={`https://atcoder.jp/contests/${problem.contestId}/tasks/${problem.problemId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    AtCoderで開く ↗
-                  </a>
-                </div>
-              ))}
+              {set.problems.map((problem, index) => {
+                const status = solveStatuses[problem.problemId] ?? "unsolved";
+                return (
+                  <div className={`problem-list-row is-${status}`} key={problem.problemId}>
+                    <span className="problem-index">{index + 1}</span>
+                    <span className="problem-title">
+                      <ProblemTitleLink
+                        problemId={problem.problemId}
+                        contestId={problem.contestId}
+                        title={problem.title}
+                      />
+                    </span>
+                    <span className="problem-source">{problem.source}</span>
+                    <DifficultyDot difficulty={problem.difficulty} />
+                    <SolveStatusControl
+                      status={status}
+                      problemTitle={problem.title}
+                      onChange={(next) => changeSolveStatus(problem.problemId, next)}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

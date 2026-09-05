@@ -13,10 +13,17 @@ import {
   type ProblemSearchResponse,
   type ProblemSet,
   type ProblemSetTag,
+  type SolveStatusMap,
   type Visibility,
 } from "@custom-contest/contracts";
 
-import { DifficultyDot, DifficultyRangeChip, TagPill } from "./components/atoms";
+import {
+  DifficultyDot,
+  DifficultyRangeChip,
+  ProblemTitleLink,
+  SolveStatusMarker,
+  TagPill,
+} from "./components/atoms";
 import { CURRENT_AUTHOR } from "./data/fixtures";
 import { newProblemSetId, problemSetRepository } from "./data/repository";
 
@@ -48,7 +55,13 @@ export function SetEditorView({ setId }: { setId?: string }) {
   const [results, setResults] = useState<ProblemSearchResponse | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [solveStatuses, setSolveStatuses] = useState<SolveStatusMap>({});
   const requestId = useRef(0);
+
+  // 「もう解いた問題か」を検索結果と追加済み一覧で見せる。ここでは変更しない。
+  useEffect(() => {
+    void problemSetRepository.solveStatuses().then(setSolveStatuses);
+  }, []);
 
   // 編集時は既存の内容を初期値にする。
   useEffect(() => {
@@ -256,8 +269,15 @@ export function SetEditorView({ setId }: { setId?: string }) {
             <div className="search-results">
               {results?.problems.map((problem) => (
                 <div className="search-row" key={problem.problemId}>
-                  <span className="search-row-title">{problem.title}</span>
+                  <span className="search-row-title">
+                    <ProblemTitleLink
+                      problemId={problem.problemId}
+                      contestId={problem.contestId}
+                      title={problem.title}
+                    />
+                  </span>
                   <span className="problem-source search-row-source">{problem.source}</span>
+                  <SolveStatusMarker status={solveStatuses[problem.problemId] ?? "unsolved"} />
                   <DifficultyDot difficulty={problem.difficulty} />
                   <button
                     className="practice-button is-small"
@@ -290,8 +310,14 @@ export function SetEditorView({ setId }: { setId?: string }) {
                       ⠿
                     </span>
                     <span className="problem-title">
-                      {problem.title} <span className="problem-source">{problem.source}</span>
+                      <ProblemTitleLink
+                        problemId={problem.problemId}
+                        contestId={problem.contestId}
+                        title={problem.title}
+                      />{" "}
+                      <span className="problem-source">{problem.source}</span>
                     </span>
+                    <SolveStatusMarker status={solveStatuses[problem.problemId] ?? "unsolved"} />
                     <DifficultyDot difficulty={problem.difficulty} />
                     <span>
                       <button

@@ -86,3 +86,9 @@
 | DESIGN-080 | 精進 / 対応幅 | Discoverとライブラリをモバイル幅の保証対象に含めるか | User | Open |
 | DESIGN-081 | 精進 / 作成 | 作成をステップ式（12章の5 step）にするか、1画面（13章のモック）にするか | User | Open: 13章が「3ステップに簡略化できる想定。ステップ数の最終形は次のラウンドで確定」としているため、現状は1画面で実装 |
 | DESIGN-082 | 精進 / Difficulty | `is_experimental`のDifficulty推定値を表示するか伏せるか | User | Open: 現状は伏せて「—」を出す。ABC001〜のような古い回が該当 |
+| DESIGN-083 | 精進 / 問題一覧 | 問題行から AtCoder へ移動する導線を、独立したボタンにするか問題名そのものにするか | User | Resolved: 問題名をリンクにし、「AtCoderで開く」ボタンは廃止 |
+| DESIGN-084 | 精進 / 挑戦状態 | 解いたかどうかを本人の自己申告で持つか、AtCoderの提出履歴から自動判定するか | User | Resolved: 自己申告の3値（未AC / 自力AC / 解説AC）。problemId単位でセットをまたいで共有する。自動判定は認証と提出履歴取得の導入後に再検討 |
+| DESIGN-085 | 精進 / 検索結果 | Discoverの検索結果を高密度の表にするか、検索前と同じカードにするか | User | Resolved: カードに統一。`SetRow`と表headerは残すが未使用 |
+| DESIGN-086 | 対戦 / 導線 | 対戦側の画面から精進側へ進む導線を置くか | User | Resolved: トップと`/battle/new`に`/discover`へのリンクを置く。出題を問題セットから行う機能結合は別Issue |
+| DESIGN-087 | デモ / 通信 | 遠隔デモの公開経路をVercelへの配備にするか、ホストPCへのtunnelにするか | User | Resolved: Cloudflare Tunnel。Room stateがprocess内のMapのため、serverlessでは複数instanceに分裂して壊れる |
+| DESIGN-088 | 対戦 / BO3 | BO3を「Matchが最大3 Roundを含む」で表すか、「Seriesが最大3 Matchを含む」で表すか | User | Resolved: Seriesが最大3 Matchを含む（ADR-0008）。実装は日曜デモ後 |

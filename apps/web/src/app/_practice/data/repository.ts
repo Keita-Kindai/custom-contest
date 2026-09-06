@@ -2,7 +2,6 @@
 
 import {
   difficultyRangeOf,
-  estimateMinutes,
   type DiscoverQuery,
   type LibraryTab,
   type ProblemSet,
@@ -132,9 +131,10 @@ export function toSummary(set: ProblemSet): ProblemSetSummary {
     authorName: set.authorName,
     likeCount: set.likeCount,
     updatedAt: set.updatedAt,
+    targetBands: set.targetBands,
     problemCount: set.problems.length,
+    problemIds: set.problems.map((problem) => problem.problemId),
     difficultyRange: difficultyRangeOf(set.problems),
-    estimatedMinutes: estimateMinutes(set.problems),
   };
 }
 

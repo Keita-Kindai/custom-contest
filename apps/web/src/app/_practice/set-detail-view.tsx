@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import {
   VISIBILITY_LABEL,
   difficultyRangeOf,
-  estimateMinutes,
   type ProblemSet,
   type SolveStatus,
   type SolveStatusMap,
@@ -18,7 +17,9 @@ import {
   EmptyState,
   ProblemTitleLink,
   SolveStatusControl,
+  SolveStatusLegend,
   TagPill,
+  TargetBandChip,
 } from "./components/atoms";
 import { CURRENT_AUTHOR } from "./data/fixtures";
 import { problemSetRepository } from "./data/repository";
@@ -61,7 +62,6 @@ export function SetDetailView({ setId }: { setId: string }) {
 
   const set: ProblemSet = data;
   const range = difficultyRangeOf(set.problems);
-  const minutes = estimateMinutes(set.problems);
   const likeCount = set.likeCount + (liked ? 1 : 0);
 
   async function copyShareLink() {
@@ -100,8 +100,10 @@ export function SetDetailView({ setId }: { setId: string }) {
               <dd>{set.problems.length}問</dd>
             </div>
             <div>
-              <dt>想定時間</dt>
-              <dd>約{minutes}分</dd>
+              <dt>想定者</dt>
+              <dd>
+                <TargetBandChip bands={set.targetBands} />
+              </dd>
             </div>
             <div>
               <dt>使用回数</dt>
@@ -135,6 +137,7 @@ export function SetDetailView({ setId }: { setId: string }) {
                     <SolveStatusControl
                       status={status}
                       problemTitle={problem.title}
+                      compact
                       onChange={(next) => changeSolveStatus(problem.problemId, next)}
                     />
                   </div>
@@ -185,6 +188,14 @@ export function SetDetailView({ setId }: { setId: string }) {
               このセットを編集
             </Link>
           )}
+
+          <div className="side-legend">
+            <span className="ps-field-label">行の色の意味</span>
+            <SolveStatusLegend />
+            <p className="ps-field-help">
+              問題の右にある印を押すと切り替わります。記録はこの端末のブラウザーにだけ残ります。
+            </p>
+          </div>
 
           <p className="set-detail-meta">
             {set.authorName} が作成 · 更新 {relativeDays(set.updatedAt)}

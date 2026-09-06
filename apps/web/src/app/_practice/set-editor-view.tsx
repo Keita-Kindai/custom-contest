@@ -4,15 +4,17 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  DIFFICULTY_BANDS,
   PROBLEM_SET_TAGS,
   VISIBILITY_LABEL,
   difficultyRangeOf,
-  estimateMinutes,
   visibilitySchema,
+  type BandKey,
   type CatalogProblem,
   type ProblemSearchResponse,
   type ProblemSet,
   type ProblemSetTag,
+  type SolveStatus,
   type SolveStatusMap,
   type Visibility,
 } from "@custom-contest/contracts";
@@ -21,22 +23,32 @@ import {
   DifficultyDot,
   DifficultyRangeChip,
   ProblemTitleLink,
-  SolveStatusMarker,
+  SolveStatusControl,
   TagPill,
+  TargetBandChip,
 } from "./components/atoms";
 import { CURRENT_AUTHOR } from "./data/fixtures";
 import { newProblemSetId, problemSetRepository } from "./data/repository";
 
 /** Diff帯のプリセット。検索の絞り込みに使う。 */
-const DIFFICULTY_BANDS: { label: string; min: number | null; max: number | null }[] = [
-  { label: "すべて", min: null, max: null },
-  { label: "〜399 灰", min: null, max: 399 },
-  { label: "400–799 茶", min: 400, max: 799 },
-  { label: "800–1199 緑", min: 800, max: 1199 },
-  { label: "1200–1599 水", min: 1200, max: 1599 },
-  { label: "1600–1999 青", min: 1600, max: 1999 },
-  { label: "2000– 紫", min: 2000, max: null },
+const DIFFICULTY_BANDS_FILTER: { label: string; min: number | null; max: number | null }[] = [
+  { label: "Diff 帯", min: null, max: null },
+  ...DIFFICULTY_BANDS.map((band, index) => ({
+    label: `${band.from}–${Number.isFinite(band.max) ? band.max : ""} ${band.label}`,
+    min: index === 0 ? null : band.from,
+    max: Number.isFinite(band.max) ? band.max : null,
+  })),
 ];
+
+const PAGE_SIZES = [20, 50, 100];
+
+/** 上の見出しへ飛ぶための並び。左から順に並べる。 */
+const SECTIONS = [
+  { id: "set-title", label: "タイトル" },
+  { id: "set-tags", label: "タグ・想定者" },
+  { id: "set-search", label: "問題検索" },
+  { id: "set-added", label: "追加済み" },
+] as const;
 
 export function SetEditorView({ setId }: { setId?: string }) {
   const router = useRouter();
@@ -44,24 +56,23 @@ export function SetEditorView({ setId }: { setId?: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<ProblemSetTag[]>([]);
-  const [visibility, setVisibility] = useState<Visibility>("public");
+  const [targetBands, setTargetBands] = useState<BandKey[]>([]);
+  const [visibility, setVisibility] = useState<Visibility | null>(null);
   const [problems, setProblems] = useState<CatalogProblem[]>([]);
   const [loaded, setLoaded] = useState(setId === undefined);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [askVisibility, setAskVisibility] = useState(false);
 
   const [term, setTerm] = useState("");
   const [bandIndex, setBandIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  const [page, setPage] = useState(1);
   const [results, setResults] = useState<ProblemSearchResponse | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [solveStatuses, setSolveStatuses] = useState<SolveStatusMap>({});
   const requestId = useRef(0);
-
-  // 「もう解いた問題か」を検索結果と追加済み一覧で見せる。ここでは変更しない。
-  useEffect(() => {
-    void problemSetRepository.solveStatuses().then(setSolveStatuses);
-  }, []);
 
   // 編集時は既存の内容を初期値にする。
   useEffect(() => {
@@ -71,6 +82,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
         setTitle(existing.title);
         setDescription(existing.description);
         setTags(existing.tags);
+        setTargetBands(existing.targetBands);
         setVisibility(existing.visibility);
         setProblems(existing.problems);
       }
@@ -78,13 +90,21 @@ export function SetEditorView({ setId }: { setId?: string }) {
     });
   }, [setId]);
 
+  useEffect(() => {
+    void problemSetRepository.solveStatuses().then(setSolveStatuses);
+  }, []);
+
   const runSearch = useCallback(async () => {
-    const band = DIFFICULTY_BANDS[bandIndex] ?? DIFFICULTY_BANDS[0]!;
+    const band = DIFFICULTY_BANDS_FILTER[bandIndex] ?? DIFFICULTY_BANDS_FILTER[0]!;
     const id = ++requestId.current;
     setSearching(true);
     setSearchError(null);
     try {
-      const params = new URLSearchParams({ q: term, limit: "20" });
+      const params = new URLSearchParams({
+        q: term,
+        limit: String(pageSize),
+        offset: String((page - 1) * pageSize),
+      });
       if (band.min !== null) params.set("difficultyMin", String(band.min));
       if (band.max !== null) params.set("difficultyMax", String(band.max));
       const response = await fetch(`/api/problems/search?${params}`, { cache: "no-store" });
@@ -97,7 +117,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
     } finally {
       if (id === requestId.current) setSearching(false);
     }
-  }, [term, bandIndex]);
+  }, [term, bandIndex, pageSize, page]);
 
   // 入力が止まってから検索する。
   useEffect(() => {
@@ -111,10 +131,25 @@ export function SetEditorView({ setId }: { setId?: string }) {
     );
   }
 
+  function toggleBand(key: BandKey) {
+    setTargetBands((current) =>
+      current.includes(key) ? current.filter((item) => item !== key) : [...current, key],
+    );
+  }
+
   function addProblem(problem: CatalogProblem) {
     setProblems((current) =>
       current.some((item) => item.problemId === problem.problemId) ? current : [...current, problem],
     );
+  }
+
+  /** 表示中のページのうち、まだ入っていないものをまとめて入れる。 */
+  function addPage() {
+    const found = results?.problems ?? [];
+    setProblems((current) => {
+      const known = new Set(current.map((item) => item.problemId));
+      return [...current, ...found.filter((problem) => !known.has(problem.problemId))];
+    });
   }
 
   function removeProblem(problemId: string) {
@@ -133,7 +168,11 @@ export function SetEditorView({ setId }: { setId?: string }) {
     });
   }
 
-  async function save(status: "draft" | "published") {
+  function changeSolveStatus(problemId: string, next: SolveStatus) {
+    void problemSetRepository.setSolveStatus(problemId, next).then(setSolveStatuses);
+  }
+
+  async function save(status: "draft" | "published", chosen?: Visibility) {
     if (!title.trim()) {
       setNotice("タイトルを入力してください。");
       return;
@@ -142,7 +181,14 @@ export function SetEditorView({ setId }: { setId?: string }) {
       setNotice("保存するには問題を1問以上追加してください。下書き保存はできます。");
       return;
     }
+    // 公開範囲は保存する瞬間に選ぶ。下書きは選ばせず非公開のままにする。
+    const decided = chosen ?? (status === "draft" ? (visibility ?? "private") : visibility);
+    if (status === "published" && decided === null) {
+      setAskVisibility(true);
+      return;
+    }
     setSaving(true);
+    setAskVisibility(false);
     const now = new Date().toISOString();
     const existing = setId ? await problemSetRepository.get(setId) : null;
     const set: ProblemSet = {
@@ -150,7 +196,8 @@ export function SetEditorView({ setId }: { setId?: string }) {
       title: title.trim(),
       description: description.trim(),
       tags,
-      visibility,
+      targetBands,
+      visibility: decided ?? "private",
       status,
       problems,
       authorName: existing?.authorName ?? CURRENT_AUTHOR,
@@ -168,15 +215,16 @@ export function SetEditorView({ setId }: { setId?: string }) {
 
   const range = difficultyRangeOf(problems);
   const added = new Set(problems.map((problem) => problem.problemId));
+  const total = results?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const pageProblems = results?.problems ?? [];
+  const allOnPageAdded = pageProblems.length > 0 && pageProblems.every((p) => added.has(p.problemId));
 
   return (
     <div className="practice-page">
       <div className="practice-page-head">
         <div>
           <h1>{setId ? "問題セットを編集" : "問題セットを作成"}</h1>
-          <p className="practice-lead">
-            Problems上の問題を正データとして検索し、ヒットを1件ずつ追加します。ランダム生成は行いません。
-          </p>
         </div>
         <div className="reaction-row">
           <button className="practice-button" type="button" disabled={saving} onClick={() => void save("draft")}>
@@ -193,17 +241,44 @@ export function SetEditorView({ setId }: { setId?: string }) {
         </div>
       </div>
 
+      <nav className="section-jump" aria-label="このページの見出し">
+        {SECTIONS.map((section) => (
+          <a key={section.id} href={`#${section.id}`}>
+            {section.label}
+          </a>
+        ))}
+      </nav>
+
       {notice && <p className="practice-notice">{notice}</p>}
+
+      {askVisibility && (
+        <div className="visibility-ask" role="group" aria-label="公開範囲を選ぶ">
+          <span className="ps-field-label">公開範囲を選んで保存します</span>
+          <div className="segmented">
+            {visibilitySchema.options.map((option) => (
+              <button key={option} type="button" onClick={() => void save("published", option)}>
+                {VISIBILITY_LABEL[option]}
+              </button>
+            ))}
+          </div>
+          <p className="ps-field-help">
+            認証がないため、この段階では公開範囲による閲覧制限は実際には効きません。
+          </p>
+          <button className="practice-button is-small" type="button" onClick={() => setAskVisibility(false)}>
+            やめる
+          </button>
+        </div>
+      )}
 
       <div className="create-layout">
         <div>
-          <section className="create-block">
-            <label className="ps-field-label" htmlFor="set-title">
+          <section className="create-block" id="set-title">
+            <label className="ps-field-label" htmlFor="set-title-input">
               問題セットタイトル
             </label>
             <input
               className="practice-input"
-              id="set-title"
+              id="set-title-input"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="DP入門セット"
@@ -223,7 +298,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
             />
           </section>
 
-          <section className="create-block">
+          <section className="create-block" id="set-tags">
             <h2>タグ（押して有効化）</h2>
             <div className="filter-tags">
               {PROBLEM_SET_TAGS.map((tag) => (
@@ -231,26 +306,51 @@ export function SetEditorView({ setId }: { setId?: string }) {
               ))}
             </div>
             <p className="ps-field-help">事前に用意したタグから選びます。最大6個。</p>
+
+            <h2>想定者（押して有効化）</h2>
+            <div className="band-picker">
+              {DIFFICULTY_BANDS.map((band) => (
+                <button
+                  key={band.key}
+                  type="button"
+                  className={`band-chip ps-diff-${band.key}${targetBands.includes(band.key) ? " is-selected" : ""}`}
+                  aria-pressed={targetBands.includes(band.key)}
+                  onClick={() => toggleBand(band.key)}
+                >
+                  <span className="band-chip-name">{band.label}</span>
+                  <span className="band-chip-value">{band.from}</span>
+                </button>
+              ))}
+            </div>
+            <p className="ps-field-help">
+              誰に向けたセットかをrating色で選びます。複数選ぶと最小〜最大の範囲、1つだけならその色だけを表示します。
+            </p>
           </section>
 
-          <section className="create-block">
+          <section className="create-block" id="set-search">
             <h2>Problems を検索して追加</h2>
             <div className="search-controls">
               <input
                 className="practice-input"
                 type="search"
                 value={term}
-                onChange={(event) => setTerm(event.target.value)}
+                onChange={(event) => {
+                  setTerm(event.target.value);
+                  setPage(1);
+                }}
                 placeholder="問題名・番号・タグで検索（例: EDPC, ABC300 C, 典型90）"
                 aria-label="問題を検索"
               />
               <select
                 className="practice-select"
                 value={bandIndex}
-                onChange={(event) => setBandIndex(Number(event.target.value))}
+                onChange={(event) => {
+                  setBandIndex(Number(event.target.value));
+                  setPage(1);
+                }}
                 aria-label="Difficulty帯"
               >
-                {DIFFICULTY_BANDS.map((band, index) => (
+                {DIFFICULTY_BANDS_FILTER.map((band, index) => (
                   <option key={band.label} value={index}>
                     {band.label}
                   </option>
@@ -258,16 +358,50 @@ export function SetEditorView({ setId }: { setId?: string }) {
               </select>
             </div>
 
+            <div className="search-toolbar">
+              <label className="ps-section-note">
+                表示件数{" "}
+                <select
+                  className="practice-select is-inline"
+                  value={pageSize}
+                  onChange={(event) => {
+                    setPageSize(Number(event.target.value));
+                    setPage(1);
+                  }}
+                >
+                  {PAGE_SIZES.map((size) => (
+                    <option key={size} value={size}>
+                      上位{size}件
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="practice-button is-primary is-small"
+                type="button"
+                onClick={addPage}
+                disabled={pageProblems.length === 0 || allOnPageAdded}
+              >
+                {allOnPageAdded ? "✓ このページは追加済み" : "＋ このページを一括追加"}
+              </button>
+              <Pager page={page} pageCount={pageCount} onChange={setPage} />
+            </div>
+
             {searchError && <p className="practice-notice">{searchError}</p>}
-            {searching && <p className="ps-field-help">検索中…</p>}
-            {results && !searching && (
-              <p className="ps-field-help">
-                {results.total}件が一致（上位{results.problems.length}件を表示）
-              </p>
-            )}
+            <p className="ps-field-help">
+              {searching
+                ? "検索中…"
+                : `${total}件が一致（${total === 0 ? 0 : (page - 1) * pageSize + 1}–${(page - 1) * pageSize + pageProblems.length}件目を表示）`}
+            </p>
 
             <div className="search-results">
-              {results?.problems.map((problem) => (
+              <div className="search-row is-head" aria-hidden="true">
+                <span>問題</span>
+                <span>状態</span>
+                <span>Diff</span>
+                <span />
+              </div>
+              {pageProblems.map((problem) => (
                 <div className="search-row" key={problem.problemId}>
                   <span className="search-row-title">
                     <ProblemTitleLink
@@ -275,9 +409,13 @@ export function SetEditorView({ setId }: { setId?: string }) {
                       contestId={problem.contestId}
                       title={problem.title}
                     />
+                    <span className="problem-source">{problem.source}</span>
                   </span>
-                  <span className="problem-source search-row-source">{problem.source}</span>
-                  <SolveStatusMarker status={solveStatuses[problem.problemId] ?? "unsolved"} />
+                  <SolveStatusControl
+                    status={solveStatuses[problem.problemId] ?? "unsolved"}
+                    problemTitle={problem.title}
+                    onChange={(next) => changeSolveStatus(problem.problemId, next)}
+                  />
                   <DifficultyDot difficulty={problem.difficulty} />
                   <button
                     className="practice-button is-small"
@@ -289,78 +427,78 @@ export function SetEditorView({ setId }: { setId?: string }) {
                   </button>
                 </div>
               ))}
-              {results && results.problems.length === 0 && !searching && (
+              {results && pageProblems.length === 0 && !searching && (
                 <p className="practice-loading">一致する問題がありません。条件を緩めてください。</p>
               )}
             </div>
-          </section>
 
-          <section className="create-block">
-            <div className="ps-section-heading">
-              <h2>追加済み（{problems.length}問）</h2>
-              <span className="ps-section-note">並び替え可</span>
+            <div className="search-toolbar is-foot">
+              <Pager page={page} pageCount={pageCount} onChange={setPage} />
             </div>
-            {problems.length === 0 ? (
-              <p className="ps-field-help">上の検索から問題を追加してください。</p>
-            ) : (
-              <div className="added-list">
-                {problems.map((problem, index) => (
-                  <div className="added-row" key={problem.problemId}>
-                    <span className="drag-handle" aria-hidden="true">
-                      ⠿
-                    </span>
-                    <span className="problem-title">
-                      <ProblemTitleLink
-                        problemId={problem.problemId}
-                        contestId={problem.contestId}
-                        title={problem.title}
-                      />{" "}
-                      <span className="problem-source">{problem.source}</span>
-                    </span>
-                    <SolveStatusMarker status={solveStatuses[problem.problemId] ?? "unsolved"} />
-                    <DifficultyDot difficulty={problem.difficulty} />
-                    <span>
-                      <button
-                        className="icon-button"
-                        type="button"
-                        onClick={() => move(index, -1)}
-                        disabled={index === 0}
-                        aria-label={`${problem.title}を上へ`}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        className="icon-button"
-                        type="button"
-                        onClick={() => move(index, 1)}
-                        disabled={index === problems.length - 1}
-                        aria-label={`${problem.title}を下へ`}
-                      >
-                        ↓
-                      </button>
-                    </span>
-                    <button
-                      className="icon-button"
-                      type="button"
-                      onClick={() => removeProblem(problem.problemId)}
-                      aria-label={`${problem.title}を削除`}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </section>
         </div>
 
-        <aside className="create-summary">
-          <h2>このセットの状態</h2>
-          <dl>
-            <div className="summary-row">
-              <dt>問題数</dt>
-              <dd>{problems.length}問</dd>
+        <aside className="create-summary" id="set-added">
+          <div className="ps-section-heading">
+            <h2>追加済み（{problems.length}問）</h2>
+            <span className="ps-section-note">並び替え可</span>
+          </div>
+
+          {problems.length === 0 ? (
+            <p className="ps-field-help">左の検索から問題を追加してください。</p>
+          ) : (
+            <div className="added-list">
+              {problems.map((problem, index) => (
+                <div className="added-row" key={problem.problemId}>
+                  <span className="drag-handle" aria-hidden="true">
+                    ⠿
+                  </span>
+                  <span className="problem-title">
+                    <ProblemTitleLink
+                      problemId={problem.problemId}
+                      contestId={problem.contestId}
+                      title={problem.title}
+                    />
+                  </span>
+                  <SolveStatusControl
+                    status={solveStatuses[problem.problemId] ?? "unsolved"}
+                    problemTitle={problem.title}
+                    compact
+                    onChange={(next) => changeSolveStatus(problem.problemId, next)}
+                  />
+                  <DifficultyDot difficulty={problem.difficulty} />
+                  <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => move(index, -1)}
+                    disabled={index === 0}
+                    aria-label={`${problem.title}を上へ`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => move(index, 1)}
+                    disabled={index === problems.length - 1}
+                    aria-label={`${problem.title}を下へ`}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => removeProblem(problem.problemId)}
+                    aria-label={`${problem.title}を削除`}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
             </div>
+          )}
+
+          <dl className="summary-facts">
             <div className="summary-row">
               <dt>Difficulty</dt>
               <dd>
@@ -368,35 +506,69 @@ export function SetEditorView({ setId }: { setId?: string }) {
               </dd>
             </div>
             <div className="summary-row">
-              <dt>想定時間</dt>
-              <dd>約{estimateMinutes(problems)}分</dd>
+              <dt>想定者</dt>
+              <dd>
+                <TargetBandChip bands={targetBands} />
+              </dd>
             </div>
             <div className="summary-row">
-              <dt>タグ</dt>
-              <dd>{tags.length > 0 ? tags.join(" / ") : "未選択"}</dd>
+              <dt>公開範囲</dt>
+              <dd>{visibility === null ? "未設定（保存時に選択）" : VISIBILITY_LABEL[visibility]}</dd>
             </div>
           </dl>
-
-          <div>
-            <span className="ps-field-label">公開範囲</span>
-            <div className="segmented">
-              {visibilitySchema.options.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={visibility === option}
-                  onClick={() => setVisibility(option)}
-                >
-                  {VISIBILITY_LABEL[option]}
-                </button>
-              ))}
-            </div>
-            <p className="ps-field-help">
-              認証がないため、この段階では公開範囲による閲覧制限は実際には効きません。
-            </p>
-          </div>
         </aside>
       </div>
+    </div>
+  );
+}
+
+/** ページ送り。端は常に出し、間は現在地の前後だけを出す。 */
+function Pager({
+  page,
+  pageCount,
+  onChange,
+}: {
+  page: number;
+  pageCount: number;
+  onChange: (next: number) => void;
+}) {
+  if (pageCount <= 1) return null;
+  const shown = new Set<number>([1, pageCount, page - 1, page, page + 1]);
+  const pages = [...shown].filter((value) => value >= 1 && value <= pageCount).sort((a, b) => a - b);
+
+  return (
+    <div className="pager" role="navigation" aria-label="検索結果のページ">
+      <button
+        className="icon-button"
+        type="button"
+        onClick={() => onChange(page - 1)}
+        disabled={page === 1}
+        aria-label="前のページ"
+      >
+        ‹
+      </button>
+      {pages.map((value, index) => (
+        <span key={value}>
+          {index > 0 && value - pages[index - 1]! > 1 && <span className="pager-gap">…</span>}
+          <button
+            className={`pager-page${value === page ? " is-current" : ""}`}
+            type="button"
+            aria-current={value === page ? "page" : undefined}
+            onClick={() => onChange(value)}
+          >
+            {value}
+          </button>
+        </span>
+      ))}
+      <button
+        className="icon-button"
+        type="button"
+        onClick={() => onChange(page + 1)}
+        disabled={page === pageCount}
+        aria-label="次のページ"
+      >
+        ›
+      </button>
     </div>
   );
 }

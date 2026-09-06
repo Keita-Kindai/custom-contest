@@ -92,3 +92,11 @@
 | DESIGN-086 | 対戦 / 導線 | 対戦側の画面から精進側へ進む導線を置くか | User | Resolved: トップと`/battle/new`に`/discover`へのリンクを置く。出題を問題セットから行う機能結合は別Issue |
 | DESIGN-087 | デモ / 通信 | 遠隔デモの公開経路をVercelへの配備にするか、ホストPCへのtunnelにするか | User | Resolved: Cloudflare Tunnel。Room stateがprocess内のMapのため、serverlessでは複数instanceに分裂して壊れる |
 | DESIGN-088 | 対戦 / BO3 | BO3を「Matchが最大3 Roundを含む」で表すか、「Seriesが最大3 Matchを含む」で表すか | User | Resolved: Seriesが最大3 Matchを含む（ADR-0008）。実装は日曜デモ後 |
+| DESIGN-092 | 精進 / 色 | Difficultyの色をAtCoder準拠の8段にするか、brand accentを避けた独自6段のままにするか | User | Resolved: AtCoderのrating色8段。橙は枠線chipで描いてaccentと分ける（ADR-0007追記） |
+| DESIGN-093 | 精進 / 一覧 | 挑戦状態を行に文字で出すか、印と色だけにするか | User | Resolved: 一覧は印（○ ● ◐）と色、文字は凡例へ集約 |
+| DESIGN-094 | 精進 / 作成 | 公開範囲をいつ選ばせるか | User | Resolved: 常時表示をやめ、「保存する」を押した時点で選ぶ。下書きは非公開のまま |
+| DESIGN-095 | 精進 / 指標 | 想定時間を出し続けるか | User | Resolved: 表示をやめ`estimateMinutes`を削除。代わりに作成者が選ぶ想定者を出す |
+| DESIGN-096 | 精進 / 想定者 | 想定者を1色で持つか、範囲で持つか | User | Resolved: 段を複数押し、表示は最小段〜最大段。1段だけならその段だけ |
+| DESIGN-097 | 精進 / ライブラリ | 保存したセットを進み具合で分けるか | User | Resolved: 全てAC / 進行中 / 未着手。解説ACもACとして数える。全タブで使える切り替え |
+| DESIGN-098 | 精進 / 検索 | 3295問のうち上位20件しか見られない状態をどうするか | User | Resolved: `offset`によるページ送りと表示件数の切り替え、ページ単位の一括追加 |
+| DESIGN-099 | 精進 / 問題data | Codeforcesの問題をカタログへ入れるか | User | Open: 今回は入れない。rating体系とURL形式が異なるため別Issue |

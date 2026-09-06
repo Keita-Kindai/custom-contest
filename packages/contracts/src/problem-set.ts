@@ -59,6 +59,10 @@ export const problemSetIdSchema = z.string().regex(/^ps_[0-9a-z]{10}$/);
 export const problemSetItemSchema = catalogProblemSchema;
 export type ProblemSetItem = z.infer<typeof problemSetItemSchema>;
 
+/** 想定者に使うrating色のkey。DIFFICULTY_BANDSと同じ段。 */
+export const bandKeySchema = z.enum(["gray", "brown", "green", "cyan", "blue", "yellow", "orange", "red"]);
+export type BandKey = z.infer<typeof bandKeySchema>;
+
 export const problemSetSchema = z.object({
   setId: problemSetIdSchema,
   title: z.string().trim().min(1).max(60),
@@ -67,6 +71,11 @@ export const problemSetSchema = z.object({
   visibility: visibilitySchema,
   status: problemSetStatusSchema,
   problems: z.array(problemSetItemSchema).max(50),
+  /**
+   * 作成者が想定した対象のrating色。押した段だけを持ち、表示では最小段〜最大段にまとめる。
+   * 1段だけならその段だけを出す。問題から計算するDifficultyとは別で、作成者の意図を表す。
+   */
+  targetBands: z.array(bandKeySchema).max(8).default([]),
   /** 認証がないため暫定値。DBと認証の導入まで実データにならない。 */
   authorName: atcoderIdSchema,
   likeCount: z.number().int().nonnegative(),
@@ -90,12 +99,14 @@ export const problemSetSummarySchema = problemSetSchema
     authorName: true,
     likeCount: true,
     updatedAt: true,
+    targetBands: true,
   })
   .extend({
     problemCount: z.number().int().nonnegative(),
+    /** 進み具合の計算に使う。順序は問わない。 */
+    problemIds: z.array(z.string()),
     /** Difficultyを持つ問題だけから求めた範囲。1問もなければnull。 */
     difficultyRange: z.object({ min: z.number().int(), max: z.number().int() }).nullable(),
-    estimatedMinutes: z.number().int().nonnegative(),
   });
 export type ProblemSetSummary = z.infer<typeof problemSetSummarySchema>;
 
@@ -124,7 +135,7 @@ export type LibraryTab = z.infer<typeof libraryTabSchema>;
 
 export const LIBRARY_TAB_LABEL: Record<LibraryTab, string> = {
   created: "作成したセット",
-  bookmarked: "ブックマーク",
+  bookmarked: "保存",
   liked: "いいねしたセット",
   recent: "最近使用",
 };
@@ -139,27 +150,18 @@ export const problemSearchQuerySchema = z.object({
   q: z.string().trim().max(80).default(""),
   difficultyMin: z.number().int().nullable().default(null),
   difficultyMax: z.number().int().nullable().default(null),
-  limit: z.number().int().min(1).max(50).default(20),
+  limit: z.number().int().min(1).max(100).default(20),
+  /** ページ送り。`total`件のうち何件目から返すか。 */
+  offset: z.number().int().min(0).default(0),
 });
 export type ProblemSearchQuery = z.infer<typeof problemSearchQuerySchema>;
 
 export const problemSearchResponseSchema = z.object({
-  /** 絞り込み後の総数。`problems`は`limit`件まで。 */
+  /** 絞り込み後の総数。`problems`は`offset`から`limit`件まで。 */
   total: z.number().int().nonnegative(),
   problems: z.array(catalogProblemSchema),
 });
 export type ProblemSearchResponse = z.infer<typeof problemSearchResponseSchema>;
-
-/** 想定回答時間の目安。Difficultyがない問題は中央値として扱う。 */
-export function estimateMinutes(problems: readonly ProblemSetItem[]): number {
-  return problems.reduce((total, problem) => {
-    const difficulty = problem.difficulty ?? 800;
-    if (difficulty < 600) return total + 10;
-    if (difficulty < 1000) return total + 15;
-    if (difficulty < 1600) return total + 25;
-    return total + 40;
-  }, 0);
-}
 
 export function difficultyRangeOf(
   problems: readonly ProblemSetItem[],
@@ -172,19 +174,33 @@ export function difficultyRangeOf(
 }
 
 /**
- * Difficultyの色帯。ブランドの橙（hue 45付近）と競合しないよう6段に絞る。
- * 色だけに依存させないため、必ず数値と色名を併記する。
+ * AtCoderのrating色そのままの8段（2026-09-06のADR-0007追記）。
+ * 以前は橙をbrand accentと分けるために6段へ丸め、2000以上を「紫」にしていたが、
+ * AtCoderに紫という段は無く、利用者が読み違える。橙は塗りつぶさず枠線のchipで描く。
+ *
+ * 同じ段を、問題のDifficultyと「想定者（対象のrating色）」の両方に使う。
  */
 export const DIFFICULTY_BANDS = [
-  { max: 399, key: "gray", label: "灰" },
-  { max: 799, key: "brown", label: "茶" },
-  { max: 1199, key: "green", label: "緑" },
-  { max: 1599, key: "cyan", label: "水" },
-  { max: 1999, key: "blue", label: "青" },
-  { max: Number.POSITIVE_INFINITY, key: "purple", label: "紫" },
+  { max: 399, key: "gray", label: "灰", from: 0 },
+  { max: 799, key: "brown", label: "茶", from: 400 },
+  { max: 1199, key: "green", label: "緑", from: 800 },
+  { max: 1599, key: "cyan", label: "水", from: 1200 },
+  { max: 1999, key: "blue", label: "青", from: 1600 },
+  { max: 2399, key: "yellow", label: "黄", from: 2000 },
+  { max: 2799, key: "orange", label: "橙", from: 2400 },
+  { max: Number.POSITIVE_INFINITY, key: "red", label: "赤", from: 2800 },
 ] as const;
 
 export type DifficultyBand = (typeof DIFFICULTY_BANDS)[number];
+
+/** 押された段を表示順に並べ、最小段と最大段を返す。1段だけなら min と max が同じになる。 */
+export function targetBandRange(
+  bands: readonly BandKey[],
+): { min: DifficultyBand; max: DifficultyBand } | null {
+  const ordered = DIFFICULTY_BANDS.filter((band) => bands.includes(band.key));
+  if (ordered.length === 0) return null;
+  return { min: ordered[0]!, max: ordered[ordered.length - 1]! };
+}
 
 export function difficultyBand(difficulty: number | null): DifficultyBand | null {
   if (difficulty === null) return null;
@@ -201,9 +217,9 @@ export const solveStatusSchema = z.enum(["unsolved", "solved", "solved_with_edit
 export type SolveStatus = z.infer<typeof solveStatusSchema>;
 
 export const SOLVE_STATUS_LABEL: Record<SolveStatus, string> = {
-  unsolved: "未AC",
-  solved: "自力AC",
-  solved_with_editorial: "解説AC",
+  unsolved: "未着手",
+  solved: "自力",
+  solved_with_editorial: "解説",
 };
 
 /** 押すたびに次へ進む順序。未AC → 自力AC → 解説AC → 未AC。 */
@@ -223,3 +239,29 @@ export function nextSolveStatus(current: SolveStatus): SolveStatus {
  * 記録のない問題は`unsolved`として扱う。
  */
 export type SolveStatusMap = Record<string, SolveStatus>;
+
+/**
+ * 保存したセットを分けるための進み具合。解説ACもACとして数える。
+ * 1問も入っていないセットは「未着手」に入れる。
+ */
+export const setProgressSchema = z.enum(["untouched", "in_progress", "all_solved"]);
+export type SetProgress = z.infer<typeof setProgressSchema>;
+
+export const SET_PROGRESS_LABEL: Record<SetProgress, string> = {
+  untouched: "未着手",
+  in_progress: "進行中",
+  all_solved: "全てAC",
+};
+
+/** 表示順。全てACを先頭に出さず、手をつけていないものから並べる。 */
+export const SET_PROGRESS_ORDER: readonly SetProgress[] = ["in_progress", "untouched", "all_solved"];
+
+export function setProgressOf(
+  problemIds: readonly string[],
+  statuses: SolveStatusMap,
+): SetProgress {
+  if (problemIds.length === 0) return "untouched";
+  const solved = problemIds.filter((id) => (statuses[id] ?? "unsolved") !== "unsolved").length;
+  if (solved === 0) return "untouched";
+  return solved === problemIds.length ? "all_solved" : "in_progress";
+}

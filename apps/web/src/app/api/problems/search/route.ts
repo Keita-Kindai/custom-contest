@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     difficultyMin: optionalInt(params.get("difficultyMin")),
     difficultyMax: optionalInt(params.get("difficultyMax")),
     limit: optionalInt(params.get("limit")) ?? 20,
+    offset: optionalInt(params.get("offset")) ?? 0,
   });
   if (!parsed.success) {
     return errorResponse("invalid_request", "検索条件を確認できませんでした。", null, 400);

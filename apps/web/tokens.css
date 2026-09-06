@@ -101,15 +101,18 @@
   --radius-pill: 999px;
 
   /*
-   * Difficulty 6段。橙（hue 45付近）を避けた色相で、AtCoder準拠だが独自レンジ。
-   * 色だけに依存させないため、画面では必ず数値と色名を併記する。
+   * AtCoderのrating色8段（2026-09-06のADR-0007追記）。
+   * 問題のDifficultyと「想定者」の両方に同じ段を使う。
+   * 橙はbrand accentと近いので、塗りつぶさず枠線のchipとして描く。
    */
   --difficulty-gray: oklch(62% 0.008 60);
   --difficulty-brown: oklch(52% 0.075 55);
   --difficulty-green: oklch(58% 0.125 145);
   --difficulty-cyan: oklch(62% 0.095 195);
   --difficulty-blue: oklch(55% 0.145 255);
-  --difficulty-purple: oklch(52% 0.145 305);
+  --difficulty-yellow: oklch(68% 0.13 95);
+  --difficulty-orange: oklch(64% 0.15 62);
+  --difficulty-red: oklch(56% 0.19 27);
 
   /*
    * Solve status（挑戦状態）の色。行のtintと左罫にだけ使う。
@@ -127,4 +130,6 @@
 [data-skin="practice"] .ps-diff-green { --difficulty-color: var(--difficulty-green); }
 [data-skin="practice"] .ps-diff-cyan { --difficulty-color: var(--difficulty-cyan); }
 [data-skin="practice"] .ps-diff-blue { --difficulty-color: var(--difficulty-blue); }
-[data-skin="practice"] .ps-diff-purple { --difficulty-color: var(--difficulty-purple); }
+[data-skin="practice"] .ps-diff-yellow { --difficulty-color: var(--difficulty-yellow); }
+[data-skin="practice"] .ps-diff-orange { --difficulty-color: var(--difficulty-orange); }
+[data-skin="practice"] .ps-diff-red { --difficulty-color: var(--difficulty-red); }

@@ -1,6 +1,6 @@
 # Direct dependency inventory
 
-Last reviewed: 2026-09-04
+Last reviewed: 2026-09-05
 
 | Package | Version | Scope | Purpose | Decision |
 | --- | --- | --- | --- | --- |
@@ -10,6 +10,8 @@ Last reviewed: 2026-09-04
 | zod | 4.5.4 | runtime | API・event・env境界のruntime validation | Accepted foundation |
 | drizzle-orm | 0.45.2 | server runtime | PostgreSQLの型付きqueryと完了Match保存 | ADR-0005 / Apache-2.0 |
 | pg | 8.23.0 | server runtime | Next.js Node processからPostgreSQL 18へ接続 | ADR-0005 / MIT |
+| next-auth | 5.0.0-beta.32 | server runtime | GitHub / GoogleのOAuthログインとdatabase session | ADR-0009 / ISC |
+| @auth/drizzle-adapter | 1.11.3 | server runtime | Auth.jsのuser・account・sessionをDrizzle schemaへ保存 | ADR-0009 / ISC |
 | typescript | 5.9.3 | development | strict type checking | Accepted foundation |
 | eslint | 9.39.5 | development | static analysis | Accepted foundation |
 | eslint-config-next | 16.3.4 | development | Next.js / React lint rules | Accepted foundation |
@@ -31,6 +33,8 @@ Last reviewed: 2026-09-04
 - `create-next-app` がESLint 10を生成する。
 - `eslint-config-next` と同梱plugin群のESLint 10対応を、strict peer dependencies下で確認できる。
 - Biomeへ移行するADRをAcceptedにする。
+
+`next-auth@5.0.0-beta.32` はbetaです。App Router + React 19に対応した安定版がまだ出ていないため、v4（Pages Router前提）ではなくv5 betaを採用しています。install scriptを持たず、`pnpm audit --prod`は既知脆弱性0件です。安定版がリリースされた時点で更新します。
 
 ## Reviewed build scripts
 

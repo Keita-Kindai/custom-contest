@@ -58,6 +58,16 @@ const EMPTY_STATE: StoredState = {
   solveStatuses: {},
 };
 
+/**
+ * 保存済みのセットを現在の形へ揃える。
+ * STORAGE_KEYはv1のままなので、`targetBands`を導入する前に保存されたセットにはこのfieldがない。
+ * そのまま返すと想定者の表示で`undefined`を読むため、ここで空配列にする。
+ */
+function normalizeStoredSet(set: ProblemSet): ProblemSet {
+  if (Array.isArray(set.targetBands)) return set;
+  return { ...set, targetBands: [] };
+}
+
 function readState(): StoredState {
   if (typeof window === "undefined") return EMPTY_STATE;
   try {
@@ -65,7 +75,7 @@ function readState(): StoredState {
     if (!raw) return EMPTY_STATE;
     const parsed = JSON.parse(raw) as Partial<StoredState>;
     return {
-      sets: Array.isArray(parsed.sets) ? parsed.sets : [],
+      sets: Array.isArray(parsed.sets) ? parsed.sets.map(normalizeStoredSet) : [],
       removed: Array.isArray(parsed.removed) ? parsed.removed : [],
       likes: Array.isArray(parsed.likes) ? parsed.likes : [],
       bookmarks: Array.isArray(parsed.bookmarks) ? parsed.bookmarks : [],

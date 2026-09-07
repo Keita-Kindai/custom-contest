@@ -222,6 +222,17 @@
   cursor: not-allowed;
 }
 
+.practice-button.is-quiet {
+  border-color: transparent;
+  background: none;
+  color: var(--color-muted);
+}
+
+.practice-button.is-quiet:hover:not(:disabled) {
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+}
+
 .practice-button.is-small {
   padding: var(--space-2) var(--space-3);
   font-size: 12px;
@@ -625,6 +636,21 @@
   overflow-wrap: anywhere;
 }
 
+/*
+ * 追加済みリストは1行に収める。長い問題名で行が増えると、
+ * 並べ替えのときに掴む位置が動いて狙いにくくなるため。
+ */
+.problem-title.is-single-line {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.problem-title.is-single-line .problem-title-link {
+  display: inline;
+}
+
 .problem-source {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -899,7 +925,7 @@
 
 .added-row {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) 22px auto 20px 20px 20px;
+  grid-template-columns: 18px minmax(0, 1fr) 22px auto 20px;
   gap: var(--space-2);
   align-items: center;
   padding: var(--space-2) var(--space-3);
@@ -908,9 +934,33 @@
   background: var(--color-surface-0);
 }
 
+.added-row.is-dragging {
+  opacity: 0.5;
+}
+
+.added-row.is-drop-target {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 1px 0 var(--color-accent);
+}
+
 .drag-handle {
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  font: inherit;
   color: var(--color-faint);
-  cursor: default;
+  cursor: grab;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-handle:hover,
+.drag-handle:focus-visible {
+  border-color: var(--color-rule);
+  color: var(--color-ink);
 }
 
 .icon-button {
@@ -1165,7 +1215,10 @@
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  min-width: 52px;
+  justify-content: center;
+  gap: 6px;
+  width: 56px;
+  height: 56px;
   padding: var(--space-2);
   border: 1px solid var(--color-rule-strong);
   border-radius: var(--radius-control);
@@ -1175,13 +1228,21 @@
   color: var(--color-muted);
 }
 
+.band-chip-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--difficulty-color, var(--color-rule-strong));
+}
+
 .band-chip:hover {
   background: var(--color-surface-2);
 }
 
 .band-chip.is-selected {
-  border-color: var(--difficulty-color, var(--color-rule-strong));
-  box-shadow: inset 0 0 0 1px var(--difficulty-color, transparent);
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+  background: var(--color-accent-soft);
   color: var(--difficulty-color, var(--color-ink));
 }
 
@@ -1274,15 +1335,96 @@
 
 /* --- 保存時の公開範囲選択 ------------------------------------------------- */
 
-.visibility-ask {
+/* --- 公開範囲モーダル（15d） --------------------------------------------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  background: rgb(0 0 0 / 0.32);
+}
+
+.modal-card {
   display: flex;
   flex-direction: column;
+  gap: var(--space-3);
+  width: min(520px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--space-6);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-0);
+  box-shadow: 0 24px 48px rgb(0 0 0 / 0.18);
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.modal-lead {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.visibility-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.visibility-option {
+  display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-5);
-  border: 1px solid var(--color-accent);
+  padding: var(--space-4);
+  border: 1px solid var(--color-rule);
   border-radius: var(--radius-card);
+  cursor: pointer;
+}
+
+.visibility-option:hover {
+  border-color: var(--color-rule-strong);
+}
+
+.visibility-option.is-selected {
+  border-color: var(--color-accent);
   background: var(--color-accent-soft);
+}
+
+.visibility-option input {
+  margin-top: 2px;
+  accent-color: var(--color-accent);
+}
+
+.visibility-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.visibility-option-label {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.visibility-option-help {
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-rule);
 }
 
 /* --- 追加済みと集計 ------------------------------------------------------ */

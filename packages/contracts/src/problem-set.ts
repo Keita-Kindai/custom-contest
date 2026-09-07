@@ -49,6 +49,13 @@ export const VISIBILITY_LABEL: Record<Visibility, string> = {
   private: "非公開",
 };
 
+/** 公開範囲の選択肢に添える説明。ラベルだけでは何が起きるか読み取れないため。 */
+export const VISIBILITY_HELP: Record<Visibility, string> = {
+  public: "Discoverに掲載され、誰でも見つけられます",
+  unlisted: "リンクを知っている人だけが開けます。検索には出ません",
+  private: "自分だけが見られます",
+};
+
 /** 保存済みか下書きか。下書きは一覧で公開範囲の代わりに「下書き」を出す。 */
 export const problemSetStatusSchema = z.enum(["draft", "published"]);
 export type ProblemSetStatus = z.infer<typeof problemSetStatusSchema>;
@@ -72,8 +79,8 @@ export const problemSetSchema = z.object({
   status: problemSetStatusSchema,
   problems: z.array(problemSetItemSchema).max(50),
   /**
-   * 作成者が想定した対象のrating色。押した段だけを持ち、表示では最小段〜最大段にまとめる。
-   * 1段だけならその段だけを出す。問題から計算するDifficultyとは別で、作成者の意図を表す。
+   * 作成者が想定した対象のrating色。押した段だけを持ち、表示でも押した段の色をその数だけ並べる。
+   * 問題から計算するDifficultyとは別で、作成者の意図を表す。
    */
   targetBands: z.array(bandKeySchema).max(8).default([]),
   /** 認証がないため暫定値。DBと認証の導入まで実データにならない。 */

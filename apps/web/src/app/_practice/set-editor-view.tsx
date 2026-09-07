@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DIFFICULTY_BANDS,
   PROBLEM_SET_TAGS,
+  VISIBILITY_HELP,
   VISIBILITY_LABEL,
   difficultyRangeOf,
   visibilitySchema,
@@ -45,7 +46,8 @@ const PAGE_SIZES = [20, 50, 100];
 /** 上の見出しへ飛ぶための並び。左から順に並べる。 */
 const SECTIONS = [
   { id: "set-title", label: "タイトル" },
-  { id: "set-tags", label: "タグ・想定者" },
+  { id: "set-tags", label: "タグ" },
+  { id: "set-bands", label: "想定者" },
   { id: "set-search", label: "問題検索" },
   { id: "set-added", label: "追加済み" },
 ] as const;
@@ -63,6 +65,11 @@ export function SetEditorView({ setId }: { setId?: string }) {
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [askVisibility, setAskVisibility] = useState(false);
+  /** モーダルの中で選んでいる公開範囲。保存を押すまで確定しない。 */
+  const [visibilityDraft, setVisibilityDraft] = useState<Visibility>("public");
+  /** ドラッグ中の行。⠿ を掴んだときだけ立てて、行全体が勝手に動かないようにする。 */
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const [term, setTerm] = useState("");
   const [bandIndex, setBandIndex] = useState(0);
@@ -168,6 +175,19 @@ export function SetEditorView({ setId }: { setId?: string }) {
     });
   }
 
+  /** ドラッグした行を、離した位置へ差し込む。入れ替えではなく挿入で並べ替える。 */
+  function reorder(from: number, to: number) {
+    setProblems((current) => {
+      if (from === to || from < 0 || to < 0 || from >= current.length || to >= current.length) {
+        return current;
+      }
+      const next = [...current];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved!);
+      return next;
+    });
+  }
+
   function changeSolveStatus(problemId: string, next: SolveStatus) {
     void problemSetRepository.setSolveStatus(problemId, next).then(setSolveStatuses);
   }
@@ -184,6 +204,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
     // 公開範囲は保存する瞬間に選ぶ。下書きは選ばせず非公開のままにする。
     const decided = chosen ?? (status === "draft" ? (visibility ?? "private") : visibility);
     if (status === "published" && decided === null) {
+      setVisibilityDraft(visibility ?? "public");
       setAskVisibility(true);
       return;
     }
@@ -252,21 +273,66 @@ export function SetEditorView({ setId }: { setId?: string }) {
       {notice && <p className="practice-notice">{notice}</p>}
 
       {askVisibility && (
-        <div className="visibility-ask" role="group" aria-label="公開範囲を選ぶ">
-          <span className="ps-field-label">公開範囲を選んで保存します</span>
-          <div className="segmented">
-            {visibilitySchema.options.map((option) => (
-              <button key={option} type="button" onClick={() => void save("published", option)}>
-                {VISIBILITY_LABEL[option]}
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setAskVisibility(false);
+          }}
+        >
+          <div
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="visibility-modal-title"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setAskVisibility(false);
+            }}
+          >
+            <h2 className="modal-title" id="visibility-modal-title">
+              公開範囲を選ぶ
+            </h2>
+            <p className="modal-lead">あとから設定を変更できます。</p>
+
+            <div className="visibility-options">
+              {visibilitySchema.options.map((option) => (
+                <label
+                  className={`visibility-option${visibilityDraft === option ? " is-selected" : ""}`}
+                  key={option}
+                >
+                  <input
+                    type="radio"
+                    name="visibility"
+                    value={option}
+                    checked={visibilityDraft === option}
+                    onChange={() => setVisibilityDraft(option)}
+                  />
+                  <span className="visibility-option-body">
+                    <span className="visibility-option-label">{VISIBILITY_LABEL[option]}</span>
+                    <span className="visibility-option-help">{VISIBILITY_HELP[option]}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <p className="ps-field-help">
+              認証がないため、この段階では公開範囲による閲覧制限は実際には効きません。
+            </p>
+
+            <div className="modal-actions">
+              <button className="practice-button is-quiet" type="button" onClick={() => setAskVisibility(false)}>
+                キャンセル
               </button>
-            ))}
+              <button
+                className="practice-button is-primary"
+                type="button"
+                disabled={saving}
+                onClick={() => void save("published", visibilityDraft)}
+              >
+                この内容で保存
+              </button>
+            </div>
           </div>
-          <p className="ps-field-help">
-            認証がないため、この段階では公開範囲による閲覧制限は実際には効きません。
-          </p>
-          <button className="practice-button is-small" type="button" onClick={() => setAskVisibility(false)}>
-            やめる
-          </button>
         </div>
       )}
 
@@ -306,8 +372,10 @@ export function SetEditorView({ setId }: { setId?: string }) {
               ))}
             </div>
             <p className="ps-field-help">事前に用意したタグから選びます。最大6個。</p>
+          </section>
 
-            <h2>想定者（押して有効化）</h2>
+          <section className="create-block" id="set-bands">
+            <h2>想定者（押して有効化・複数可）</h2>
             <div className="band-picker">
               {DIFFICULTY_BANDS.map((band) => (
                 <button
@@ -317,13 +385,16 @@ export function SetEditorView({ setId }: { setId?: string }) {
                   aria-pressed={targetBands.includes(band.key)}
                   onClick={() => toggleBand(band.key)}
                 >
-                  <span className="band-chip-name">{band.label}</span>
-                  <span className="band-chip-value">{band.from}</span>
+                  <span className="band-chip-dot" aria-hidden="true" />
+                  <span className="band-chip-name">
+                    {targetBands.includes(band.key) && <span aria-hidden="true">✓ </span>}
+                    {band.label}
+                  </span>
                 </button>
               ))}
             </div>
             <p className="ps-field-help">
-              誰に向けたセットかをrating色で選びます。複数選ぶと最小〜最大の範囲、1つだけならその色だけを表示します。
+              誰に向けたセットかを選びます。複数選べます。選んだ色はそのままカードに並びます。
             </p>
           </section>
 
@@ -441,7 +512,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
         <aside className="create-summary" id="set-added">
           <div className="ps-section-heading">
             <h2>追加済み（{problems.length}問）</h2>
-            <span className="ps-section-note">並び替え可</span>
+            <span className="ps-section-note">⠿ を掴んで並び替え</span>
           </div>
 
           {problems.length === 0 ? (
@@ -449,11 +520,59 @@ export function SetEditorView({ setId }: { setId?: string }) {
           ) : (
             <div className="added-list">
               {problems.map((problem, index) => (
-                <div className="added-row" key={problem.problemId}>
-                  <span className="drag-handle" aria-hidden="true">
-                    ⠿
-                  </span>
-                  <span className="problem-title">
+                <div
+                  className={`added-row${dragIndex === index ? " is-dragging" : ""}${
+                    dragOverIndex === index && dragIndex !== index ? " is-drop-target" : ""
+                  }`}
+                  key={problem.problemId}
+                  draggable={dragIndex === index}
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    // Firefoxはデータを載せないとdragを開始しない。
+                    event.dataTransfer.setData("text/plain", problem.problemId);
+                  }}
+                  onDragOver={(event) => {
+                    if (dragIndex === null) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    setDragOverIndex(index);
+                  }}
+                  onDrop={(event) => {
+                    if (dragIndex === null) return;
+                    event.preventDefault();
+                    reorder(dragIndex, index);
+                    setDragIndex(null);
+                    setDragOverIndex(null);
+                  }}
+                  onDragEnd={() => {
+                    setDragIndex(null);
+                    setDragOverIndex(null);
+                  }}
+                >
+                  {/*
+                   * 掴んで並べ替える取っ手。マウスでは⠿からのdragだけを許可し、
+                   * キーボードでは上下キーで同じ並べ替えができるようにしてある。
+                   */}
+                  <button
+                    className="drag-handle"
+                    type="button"
+                    aria-label={`${problem.title}の並び順（上下キーで移動）`}
+                    onMouseDown={() => setDragIndex(index)}
+                    onMouseUp={() => setDragIndex(null)}
+                    onKeyDown={(event) => {
+                      if (event.key === "ArrowUp") {
+                        event.preventDefault();
+                        move(index, -1);
+                      }
+                      if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        move(index, 1);
+                      }
+                    }}
+                  >
+                    <span aria-hidden="true">⠿</span>
+                  </button>
+                  <span className="problem-title is-single-line" title={problem.title}>
                     <ProblemTitleLink
                       problemId={problem.problemId}
                       contestId={problem.contestId}
@@ -467,24 +586,6 @@ export function SetEditorView({ setId }: { setId?: string }) {
                     onChange={(next) => changeSolveStatus(problem.problemId, next)}
                   />
                   <DifficultyDot difficulty={problem.difficulty} />
-                  <button
-                    className="icon-button"
-                    type="button"
-                    onClick={() => move(index, -1)}
-                    disabled={index === 0}
-                    aria-label={`${problem.title}を上へ`}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    className="icon-button"
-                    type="button"
-                    onClick={() => move(index, 1)}
-                    disabled={index === problems.length - 1}
-                    aria-label={`${problem.title}を下へ`}
-                  >
-                    ↓
-                  </button>
                   <button
                     className="icon-button"
                     type="button"

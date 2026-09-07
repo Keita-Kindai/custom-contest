@@ -291,16 +291,23 @@
   border: 1px dashed var(--color-rule-strong);
 }
 
+/*
+ * Difficultyは4桁までしか出ない（AtCoder最大でも4桁）。
+ * 4桁ぶんの幅を常に確保して右寄せするので、値が3桁でも、
+ * 挑戦状態を切り替えても、隣の列が動かない。
+ */
 .ps-diff-value {
   font-family: var(--font-mono);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   color: var(--color-ink-2);
+  min-width: 4ch;
+  text-align: right;
 }
 
-.ps-diff-name {
-  font-size: 11px;
-  color: var(--color-faint);
+.ps-difficulty.is-range .ps-diff-value {
+  /* `1200–1599` は9文字。 */
+  min-width: 9ch;
 }
 
 .visibility-pill {
@@ -471,7 +478,6 @@
 }
 
 .set-row-count,
-.set-row-time,
 .set-row-likes {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -588,7 +594,7 @@
 
 .problem-list-row {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 96px 140px auto;
+  grid-template-columns: 28px minmax(0, 1fr) 96px 76px 28px;
   gap: var(--space-4);
   align-items: center;
   padding: var(--space-3) var(--space-5);
@@ -616,11 +622,118 @@
   color: var(--color-muted);
 }
 
-.problem-open {
-  font-size: 12px;
+/*
+ * 問題名そのものが外部リンク。一覧に「AtCoderで開く」ボタンを並べるのをやめ、
+ * クリック領域を問題名へ一本化した。
+ */
+.practice-shell a.problem-title-link {
+  color: var(--color-ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--color-rule-strong);
+  text-underline-offset: 3px;
+}
+
+.practice-shell a.problem-title-link:hover {
   color: var(--color-accent-strong);
-  font-weight: 700;
+  text-decoration-color: var(--color-accent-strong);
+}
+
+.problem-title-external {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--color-faint);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
   white-space: nowrap;
+  border: 0;
+}
+
+/* --- solve status ------------------------------------------------------- */
+
+/*
+ * 挑戦状態の3値トグル。押すたびに 未AC → 自力AC → 解説AC → 未AC と進む。
+ * 色は補助でしかなく、状態名は常に文字で出す。
+ */
+.solve-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 3px var(--space-3);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-0);
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.solve-status:hover {
+  background: var(--color-surface-2);
+}
+
+.solve-status.is-readonly {
+  cursor: default;
+  border-style: dashed;
+}
+
+.solve-status.is-solved {
+  border-color: var(--solve-solved);
+  color: var(--solve-solved);
+  background: var(--solve-solved-soft);
+}
+
+.solve-status.is-solved_with_editorial {
+  border-color: var(--solve-editorial);
+  color: var(--solve-editorial);
+  background: var(--solve-editorial-soft);
+}
+
+.solve-status-mark {
+  font-size: 10px;
+}
+
+/*
+ * 一覧の行では印だけを出す。3状態とも同じ大きさなので、
+ * 押しても隣のDiff列や追加ボタンが動かない。
+ */
+.solve-status.is-compact {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  gap: 0;
+}
+
+.solve-status-text {
+  min-width: 3em;
+  text-align: center;
+}
+
+/* 行そのものにも状態を出す。左罫と薄いtintだけで、文字の可読性は落とさない。 */
+.problem-list-row {
+  border-left: 3px solid transparent;
+}
+
+.problem-list-row.is-solved {
+  border-left-color: var(--solve-solved);
+  background: var(--solve-solved-soft);
+}
+
+.problem-list-row.is-solved_with_editorial {
+  border-left-color: var(--solve-editorial);
+  background: var(--solve-editorial-soft);
 }
 
 .set-detail-side {
@@ -672,7 +785,7 @@
 
 .create-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr) 380px;
   gap: var(--space-8);
   align-items: start;
 }
@@ -725,13 +838,36 @@
   overflow: hidden;
 }
 
+/*
+ * 問題 / 状態 / Diff / 追加。行の幅をいっぱいまで使う。
+ * 出典の列は置かない。カタログ3295問のうちタグを持つのは330問だけで、
+ * 残りは空欄になる。出典は問題名の下にすでに出している。
+ */
 .search-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px 110px 92px;
-  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr) 72px 76px 96px;
+  gap: var(--space-4);
   align-items: center;
   padding: var(--space-3) var(--space-4);
   background: var(--color-surface-0);
+}
+
+.search-row.is-head {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+  background: var(--color-surface-1);
+  font-size: 11px;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.search-row.is-head + .search-row {
+  border-top: none;
+}
+
+.search-row .ps-difficulty,
+.search-row .solve-status {
+  justify-self: start;
 }
 
 .search-row + .search-row {
@@ -739,6 +875,9 @@
 }
 
 .search-row-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   font-weight: 500;
   overflow-wrap: anywhere;
 }
@@ -751,8 +890,8 @@
 
 .added-row {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) 128px auto auto;
-  gap: var(--space-3);
+  grid-template-columns: 16px minmax(0, 1fr) 22px auto 20px 20px 20px;
+  gap: var(--space-2);
   align-items: center;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-rule);
@@ -944,17 +1083,270 @@
   }
 
   .set-row-difficulty,
-  .set-row-time,
   .set-row-author {
     display: none;
   }
 
   .search-row {
-    grid-template-columns: minmax(0, 1fr) 92px;
+    grid-template-columns: minmax(0, 1fr) 60px 68px 88px;
   }
 
-  .search-row-source,
-  .search-row .ps-diff-name {
+  .added-row {
+    grid-template-columns: 16px minmax(0, 1fr) 22px auto 20px;
+  }
+
+  .added-row .icon-button[aria-label$="へ"] {
     display: none;
   }
+
+  .problem-list-row {
+    grid-template-columns: 24px minmax(0, 1fr) 76px 28px;
+  }
+
+  .problem-list-row .problem-source {
+    display: none;
+  }
+
+  .search-row .solve-status-text {
+    display: none;
+  }
+}
+
+/* --- 見出しへの移動 ------------------------------------------------------ */
+
+.section-jump {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-2) 0;
+  position: sticky;
+  top: 56px;
+  z-index: 2;
+  background: var(--color-canvas);
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.practice-shell .section-jump a {
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-rule);
+  background: var(--color-surface-0);
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.practice-shell .section-jump a:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+}
+
+/* --- 想定者（rating色） --------------------------------------------------- */
+
+.band-picker {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/*
+ * 橙はbrand accentと近いので、選択状態でも塗りつぶさない。
+ * 選んだことは枠線の太さとチェック印で示す。
+ */
+.band-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 52px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-rule-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-0);
+  font: inherit;
+  cursor: pointer;
+  color: var(--color-muted);
+}
+
+.band-chip:hover {
+  background: var(--color-surface-2);
+}
+
+.band-chip.is-selected {
+  border-color: var(--difficulty-color, var(--color-rule-strong));
+  box-shadow: inset 0 0 0 1px var(--difficulty-color, transparent);
+  color: var(--difficulty-color, var(--color-ink));
+}
+
+.band-chip-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--difficulty-color, var(--color-ink));
+}
+
+.band-chip-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-faint);
+}
+
+.ps-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ps-target.is-unset {
+  font-size: 12px;
+  color: var(--color-faint);
+}
+
+.ps-band-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--difficulty-color, var(--color-rule-strong));
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--difficulty-color, var(--color-ink));
+}
+
+.ps-target-tilde {
+  font-size: 11px;
+  color: var(--color-faint);
+}
+
+/* --- 検索の道具立て ------------------------------------------------------ */
+
+.search-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.search-toolbar.is-foot {
+  justify-content: flex-end;
+  padding-top: var(--space-3);
+}
+
+.practice-select.is-inline {
+  width: auto;
+  display: inline-block;
+  padding: 2px var(--space-2);
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.pager-page {
+  min-width: 26px;
+  padding: 2px var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.pager-page:hover {
+  background: var(--color-surface-2);
+}
+
+.pager-page.is-current {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-weight: 700;
+}
+
+.pager-gap {
+  color: var(--color-faint);
+  padding: 0 2px;
+}
+
+/* --- 保存時の公開範囲選択 ------------------------------------------------- */
+
+.visibility-ask {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-card);
+  background: var(--color-accent-soft);
+}
+
+/* --- 追加済みと集計 ------------------------------------------------------ */
+
+.create-summary .added-list {
+  max-height: 46vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.summary-facts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
+}
+
+/* --- ライブラリの束ね ---------------------------------------------------- */
+
+.library-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: var(--space-2);
+}
+
+.library-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* --- 挑戦状態の凡例 ------------------------------------------------------ */
+
+.side-legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
+}
+
+.solve-legend {
+  display: flex;
+  gap: var(--space-4);
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.solve-legend > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.solve-legend dt,
+.solve-legend dd {
+  margin: 0;
+}
+
+.solve-legend dd {
+  font-size: 12px;
+  color: var(--color-muted);
 }

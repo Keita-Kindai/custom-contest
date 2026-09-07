@@ -44,7 +44,10 @@ export function searchCatalog(query: ProblemSearchQuery): ProblemSearchResponse 
       matchesKeyword(problem, query.q) &&
       matchesDifficulty(problem, query.difficultyMin, query.difficultyMax),
   );
-  return { total: matched.length, problems: matched.slice(0, query.limit) };
+  return {
+    total: matched.length,
+    problems: matched.slice(query.offset, query.offset + query.limit),
+  };
 }
 
 export function catalogProblemById(problemId: string): CatalogProblem | null {

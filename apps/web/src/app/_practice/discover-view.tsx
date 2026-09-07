@@ -9,7 +9,7 @@ import {
   type ProblemSetTag,
 } from "@custom-contest/contracts";
 
-import { EmptyState, SetCard, SetRow, TagPill } from "./components/atoms";
+import { EmptyState, SetCard, TagPill } from "./components/atoms";
 import { problemSetRepository } from "./data/repository";
 import { usePracticeData } from "./use-practice-data";
 
@@ -132,18 +132,9 @@ export function DiscoverView() {
             />
           )}
           {!results.loading && (results.data?.length ?? 0) > 0 && (
-            <div className="set-list">
-              <div className="set-list-head" aria-hidden="true">
-                <span>タイトル</span>
-                <span>タグ</span>
-                <span>Difficulty</span>
-                <span>問題数</span>
-                <span>想定時間</span>
-                <span>作成者</span>
-                <span>反応</span>
-              </div>
+            <div className="set-grid is-featured">
               {results.data?.map((summary) => (
-                <SetRow key={summary.setId} summary={summary} />
+                <SetCard key={summary.setId} summary={summary} variant="featured" />
               ))}
             </div>
           )}

@@ -2,11 +2,12 @@
 
 import {
   difficultyRangeOf,
-  estimateMinutes,
   type DiscoverQuery,
   type LibraryTab,
   type ProblemSet,
   type ProblemSetSummary,
+  type SolveStatus,
+  type SolveStatusMap,
 } from "@custom-contest/contracts";
 
 import { CURRENT_AUTHOR, seedProblemSets } from "./fixtures";
@@ -30,6 +31,8 @@ export type ProblemSetRepository = {
   toggleLike(setId: string): Promise<boolean>;
   toggleBookmark(setId: string): Promise<boolean>;
   markRecent(setId: string): Promise<void>;
+  solveStatuses(): Promise<SolveStatusMap>;
+  setSolveStatus(problemId: string, status: SolveStatus): Promise<SolveStatusMap>;
 };
 
 const STORAGE_KEY = "custom-contest:problem-sets:v1";
@@ -42,9 +45,18 @@ type StoredState = {
   likes: string[];
   bookmarks: string[];
   recent: string[];
+  /** problemId単位の挑戦状態。セットをまたいで1つの状態を共有する。 */
+  solveStatuses: SolveStatusMap;
 };
 
-const EMPTY_STATE: StoredState = { sets: [], removed: [], likes: [], bookmarks: [], recent: [] };
+const EMPTY_STATE: StoredState = {
+  sets: [],
+  removed: [],
+  likes: [],
+  bookmarks: [],
+  recent: [],
+  solveStatuses: {},
+};
 
 function readState(): StoredState {
   if (typeof window === "undefined") return EMPTY_STATE;
@@ -58,6 +70,8 @@ function readState(): StoredState {
       likes: Array.isArray(parsed.likes) ? parsed.likes : [],
       bookmarks: Array.isArray(parsed.bookmarks) ? parsed.bookmarks : [],
       recent: Array.isArray(parsed.recent) ? parsed.recent : [],
+      solveStatuses:
+        parsed.solveStatuses && typeof parsed.solveStatuses === "object" ? parsed.solveStatuses : {},
     };
   } catch {
     // 壊れた保存内容でも画面が開けるように、seedだけで続行する。
@@ -117,9 +131,10 @@ export function toSummary(set: ProblemSet): ProblemSetSummary {
     authorName: set.authorName,
     likeCount: set.likeCount,
     updatedAt: set.updatedAt,
+    targetBands: set.targetBands,
     problemCount: set.problems.length,
+    problemIds: set.problems.map((problem) => problem.problemId),
     difficultyRange: difficultyRangeOf(set.problems),
-    estimatedMinutes: estimateMinutes(set.problems),
   };
 }
 
@@ -246,6 +261,20 @@ export const problemSetRepository: ProblemSetRepository = {
   async markRecent(setId) {
     const state = readState();
     writeState({ ...state, recent: [setId, ...state.recent.filter((id) => id !== setId)].slice(0, 12) });
+  },
+
+  async solveStatuses() {
+    return readState().solveStatuses;
+  },
+
+  async setSolveStatus(problemId, status) {
+    const state = readState();
+    const next = { ...state.solveStatuses };
+    // 未ACは既定値なので、記録を残さず削除する。
+    if (status === "unsolved") delete next[problemId];
+    else next[problemId] = status;
+    writeState({ ...state, solveStatuses: next });
+    return next;
   },
 };
 

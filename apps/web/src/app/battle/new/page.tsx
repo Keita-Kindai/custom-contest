@@ -18,6 +18,7 @@ export default function NewBattlePage() {
       </section>
       <div className="section-block">
         <Link className="button button-quiet" href="/">トップへ戻る</Link>
+        <Link className="button button-quiet" href="/discover">問題セットを探す</Link>
       </div>
     </AppShell>
   );

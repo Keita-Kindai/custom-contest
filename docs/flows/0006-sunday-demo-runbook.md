@@ -51,12 +51,37 @@ pnpm dev --hostname 0.0.0.0
 
 `http://localhost:3000/api/health`が`ok: true`ならRoomを作成できます。LAN上の友人へは、ホストPCのIPを使った`http://<host-ip>:3000`を共有します。
 
-## 2. userscriptのbuildと導入
+## 1-b. 遠隔デモにする場合（Cloudflare Tunnel）
 
-ホストPCのLAN URLを埋め込んでbuildします。これによりTampermonkeyの`@connect`はそのhostだけに限定されます。
+友人が同じLANにいない場合だけ、この節を実施します。同一LANであれば`http://<host-ip>:3000`のままで構いません。
+
+ホストPCで`cloudflared`を導入し、起動中の開発サーバーへtunnelを張ります。アカウント登録は不要です。
 
 ```sh
+brew install cloudflared
+cloudflared tunnel --url http://localhost:3000
+```
+
+`https://<ランダムな文字列>.trycloudflare.com`が表示されます。これがこの回のデモの公開originです。
+
+このURLには次の性質があります。
+
+- tunnelを止めると失効し、次に起動すると別のURLになる。
+- したがってuserscriptのbuildは**tunnelを起動した後**に行う。URLが変わったらuserscriptを再buildし、友人にも入れ直してもらう。
+- 推測困難なURLだが、URLを知る人は誰でも到達できる。デモが終わったらtunnelを止める。
+
+DBはホストPCのPostgreSQLのままで、外部へは公開されません。ブラウザーはCustom Contest APIだけへ接続します（ADR-0005）。
+
+## 2. userscriptのbuildと導入
+
+ホストPCのURLを埋め込んでbuildします。これによりTampermonkeyの`@connect`はそのhostだけに限定されます。
+
+```sh
+# 同一LANの場合
 CUSTOM_CONTEST_SERVER_ORIGIN=http://<host-ip>:3000 pnpm userscript:build
+
+# Cloudflare Tunnelの場合（1-bで表示されたURL）
+CUSTOM_CONTEST_SERVER_ORIGIN=https://<ランダム>.trycloudflare.com pnpm userscript:build
 ```
 
 両方のChrome/Edgeで、生成された`apps/userscript/dist/custom-contest-atcoder.user.js`をTampermonkeyへ読み込ませ、各自のAtCoderアカウントへログインします。

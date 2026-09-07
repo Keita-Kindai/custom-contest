@@ -25,7 +25,7 @@ import {
   ProblemTitleLink,
   SolveStatusControl,
   TagPill,
-  TargetBandChip,
+  TargetBandDots,
 } from "./components/atoms";
 import { CURRENT_AUTHOR } from "./data/fixtures";
 import { newProblemSetId, problemSetRepository } from "./data/repository";
@@ -508,7 +508,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
             <div className="summary-row">
               <dt>想定者</dt>
               <dd>
-                <TargetBandChip bands={targetBands} />
+                <TargetBandDots bands={targetBands} />
               </dd>
             </div>
             <div className="summary-row">

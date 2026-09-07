@@ -6,7 +6,7 @@ import {
   VISIBILITY_LABEL,
   difficultyBand,
   nextSolveStatus,
-  targetBandRange,
+  orderedTargetBands,
   type BandKey,
   type ProblemSetSummary,
   type ProblemSetTag,
@@ -35,20 +35,18 @@ export function DifficultyDot({ difficulty }: { difficulty: number | null }) {
   );
 }
 
-/** 想定者（対象のrating色）。1段だけならその段、複数なら最小段〜最大段。 */
-export function TargetBandChip({ bands }: { bands: readonly BandKey[] }) {
-  const range = targetBandRange(bands);
-  if (!range) return <span className="ps-target is-unset">未設定</span>;
-  const single = range.min.key === range.max.key;
+/**
+ * 想定者（対象のrating色）。選んだ段の色ドットを、その数だけ表示順に並べる。
+ * 最小〜最大のレンジにはしない。飛ばした段を含んでいるように見えてしまうため。
+ */
+export function TargetBandDots({ bands }: { bands: readonly BandKey[] }) {
+  const ordered = orderedTargetBands(bands);
+  if (ordered.length === 0) return <span className="ps-target is-unset">未設定</span>;
   return (
-    <span className="ps-target">
-      <span className={`ps-band-chip ps-diff-${range.min.key}`}>{range.min.label}</span>
-      {!single && (
-        <>
-          <span className="ps-target-tilde" aria-hidden="true">〜</span>
-          <span className={`ps-band-chip ps-diff-${range.max.key}`}>{range.max.label}</span>
-        </>
-      )}
+    <span className="ps-target" aria-label={`想定者 ${ordered.map((band) => band.label).join("・")}`}>
+      {ordered.map((band) => (
+        <span key={band.key} className={`ps-target-dot ps-diff-${band.key}`} title={band.label} />
+      ))}
     </span>
   );
 }
@@ -101,8 +99,11 @@ export function TagPill({
 }
 
 /**
- * 全画面共通のカード（13章）。
- * ① タイトル（太字・左上）② カテゴリ／作者名（左下）③ いいね数（右）④ 公開状態pill
+ * Discoverとマイページ共通のカード（15a）。
+ * ① タイトル＋いいね数 ② タグを省略せず全件 ③ 対象者の色ドットと問題数 ④ 作成者名。
+ *
+ * Difficultyの数値レンジは載せない。カード幅に収まらないうえ、対象者の色と役割が重なるため、
+ * 「誰向けか」は対象者のドット列だけで表す。
  */
 export function SetCard({
   summary,
@@ -113,7 +114,6 @@ export function SetCard({
   variant?: "featured" | "list";
   showVisibility?: boolean;
 }) {
-  const category = summary.tags[0] ?? "未分類";
   return (
     <Link className={`set-card set-card-${variant}`} href={`/sets/${summary.setId}`}>
       <div className="set-card-head">
@@ -123,29 +123,30 @@ export function SetCard({
         </span>
       </div>
 
-      {variant === "featured" && (
-        <dl className="set-card-facts">
-          <div>
-            <dt>Difficulty</dt>
-            <dd>
-              <DifficultyRangeChip range={summary.difficultyRange} />
-            </dd>
-          </div>
-          <div>
-            <dt>問題数</dt>
-            <dd>{summary.problemCount}問</dd>
-          </div>
-          <div>
-            <dt>想定者</dt>
-            <dd>
-              <TargetBandChip bands={summary.targetBands} />
-            </dd>
-          </div>
-        </dl>
+      {summary.tags.length > 0 && (
+        <div className="set-card-tags">
+          {summary.tags.map((tag) => (
+            <span className="tag-pill is-small" key={tag}>
+              {tag}
+            </span>
+          ))}
+        </div>
       )}
 
+      <dl className="set-card-facts">
+        <div>
+          <dt>対象者</dt>
+          <dd>
+            <TargetBandDots bands={summary.targetBands} />
+          </dd>
+        </div>
+        <div>
+          <dt>問題数</dt>
+          <dd>{summary.problemCount}問</dd>
+        </div>
+      </dl>
+
       <div className="set-card-foot">
-        <span className="set-card-category">{category}</span>
         <span className="set-card-author">
           {summary.status === "draft" ? `${summary.problemCount}問構成中` : summary.authorName}
         </span>

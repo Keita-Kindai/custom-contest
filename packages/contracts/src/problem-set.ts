@@ -193,13 +193,12 @@ export const DIFFICULTY_BANDS = [
 
 export type DifficultyBand = (typeof DIFFICULTY_BANDS)[number];
 
-/** 押された段を表示順に並べ、最小段と最大段を返す。1段だけなら min と max が同じになる。 */
-export function targetBandRange(
-  bands: readonly BandKey[],
-): { min: DifficultyBand; max: DifficultyBand } | null {
-  const ordered = DIFFICULTY_BANDS.filter((band) => bands.includes(band.key));
-  if (ordered.length === 0) return null;
-  return { min: ordered[0]!, max: ordered[ordered.length - 1]! };
+/**
+ * 押された段を表示順に並べる。押した段だけを返すので、間の段は含まない。
+ * 表示は最小〜最大のレンジではなく、選んだ色をその数だけ並べる形にしている。
+ */
+export function orderedTargetBands(bands: readonly BandKey[]): DifficultyBand[] {
+  return DIFFICULTY_BANDS.filter((band) => bands.includes(band.key));
 }
 
 export function difficultyBand(difficulty: number | null): DifficultyBand | null {

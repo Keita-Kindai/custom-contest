@@ -59,3 +59,62 @@
   --z-modal: 400;
   --z-toast: 500;
 }
+
+/*
+ * 精進（問題セット）skin。ADR-0007。
+ * primitive層（--space-*, --dur-*, --ease-*, --z-*）は上の:rootを共有し、
+ * ここでは色と書体だけを差し替える。対戦側のdark skinは変更しない。
+ */
+[data-skin="practice"] {
+  color-scheme: light;
+
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "BIZ UDPGothic", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+
+  --color-canvas: oklch(98.6% 0.003 60);
+  --color-surface-0: oklch(100% 0 0);
+  --color-surface-1: oklch(98% 0.004 60);
+  --color-surface-2: oklch(95.5% 0.006 60);
+  --color-surface-3: oklch(93% 0.007 60);
+  --color-rule: oklch(90% 0.006 60);
+  --color-rule-strong: oklch(78% 0.008 60);
+  --color-ink: oklch(28% 0.012 55);
+  --color-ink-2: oklch(38% 0.012 55);
+  --color-muted: oklch(52% 0.011 55);
+  --color-faint: oklch(63% 0.009 55);
+
+  /* brand accent: #E8823A 相当。橙はaccent専用にし、Difficultyでは使わない。 */
+  --color-accent: oklch(68% 0.142 52);
+  --color-accent-strong: oklch(60% 0.152 50);
+  --color-accent-ink: oklch(100% 0 0);
+  --color-accent-soft: oklch(68% 0.142 52 / 0.12);
+  --color-caution: oklch(62% 0.13 75);
+  --color-danger: oklch(55% 0.17 25);
+  --color-danger-soft: oklch(55% 0.17 25 / 0.1);
+  --color-focus: oklch(50% 0.14 52);
+  --color-scrim: oklch(28% 0.012 55 / 0.42);
+  --color-scrim-strong: oklch(28% 0.012 55 / 0.62);
+
+  /* 8=ボタン・入力欄 / 12=カード / pill=タグ・状態表示 */
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-pill: 999px;
+
+  /*
+   * Difficulty 6段。橙（hue 45付近）を避けた色相で、AtCoder準拠だが独自レンジ。
+   * 色だけに依存させないため、画面では必ず数値と色名を併記する。
+   */
+  --difficulty-gray: oklch(62% 0.008 60);
+  --difficulty-brown: oklch(52% 0.075 55);
+  --difficulty-green: oklch(58% 0.125 145);
+  --difficulty-cyan: oklch(62% 0.095 195);
+  --difficulty-blue: oklch(55% 0.145 255);
+  --difficulty-purple: oklch(52% 0.145 305);
+}
+
+[data-skin="practice"] .ps-diff-gray { --difficulty-color: var(--difficulty-gray); }
+[data-skin="practice"] .ps-diff-brown { --difficulty-color: var(--difficulty-brown); }
+[data-skin="practice"] .ps-diff-green { --difficulty-color: var(--difficulty-green); }
+[data-skin="practice"] .ps-diff-cyan { --difficulty-color: var(--difficulty-cyan); }
+[data-skin="practice"] .ps-diff-blue { --difficulty-color: var(--difficulty-blue); }
+[data-skin="practice"] .ps-diff-purple { --difficulty-color: var(--difficulty-purple); }

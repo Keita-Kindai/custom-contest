@@ -5,6 +5,7 @@ export * from "./problem";
 export * from "./room";
 export * from "./api";
 export * from "./userscript";
+export * from "./problem-set";
 
 export const projectSummarySchema = z.object({
   name: z.string().min(1),

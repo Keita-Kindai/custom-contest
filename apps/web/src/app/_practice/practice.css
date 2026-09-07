@@ -1201,6 +1201,51 @@
 
 /* --- 想定者（rating色） --------------------------------------------------- */
 
+/* --- Discoverの対象者フィルター（15b） ----------------------------------- */
+
+.band-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
+}
+
+.band-filter-dots {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.band-filter-dot {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--difficulty-color, var(--color-rule-strong));
+  background-clip: padding-box;
+  cursor: pointer;
+}
+
+.band-filter-dot:hover {
+  border-color: var(--color-rule-strong);
+}
+
+.band-filter-dot.is-selected {
+  border-color: var(--color-ink);
+}
+
+.band-filter-clear {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
 .band-picker {
   display: flex;
   gap: var(--space-2);

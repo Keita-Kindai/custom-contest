@@ -130,6 +130,8 @@ export const PROBLEM_SET_SORT_LABEL: Record<ProblemSetSort, string> = {
 export const discoverQuerySchema = z.object({
   q: z.string().trim().max(80).default(""),
   tags: z.array(problemSetTagSchema).default([]),
+  /** 作成者が選んだ想定者の色。1つでも一致すればそのセットを残す。 */
+  bands: z.array(bandKeySchema).max(8).default([]),
   sort: problemSetSortSchema.default("popular"),
   difficultyMin: z.number().int().nullable().default(null),
   difficultyMax: z.number().int().nullable().default(null),

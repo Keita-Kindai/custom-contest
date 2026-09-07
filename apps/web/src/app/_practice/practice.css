@@ -1246,6 +1246,41 @@
   cursor: pointer;
 }
 
+/* --- 表示テーマの切り替え ------------------------------------------------ */
+
+.theme-switch {
+  display: flex;
+  margin-left: auto;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.theme-switch-option {
+  padding: 4px var(--space-3);
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.theme-switch-option + .theme-switch-option {
+  border-left: 1px solid var(--color-rule);
+}
+
+.theme-switch-option:hover {
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+}
+
+.theme-switch-option.is-current {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
 .band-picker {
   display: flex;
   gap: var(--space-2);
@@ -1390,7 +1425,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-5);
-  background: rgb(0 0 0 / 0.32);
+  background: var(--color-scrim);
 }
 
 .modal-card {

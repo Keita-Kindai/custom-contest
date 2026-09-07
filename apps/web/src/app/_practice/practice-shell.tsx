@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { ThemeSwitch, practiceThemeBootstrap } from "./components/theme-switch";
 import "./practice.css";
 
 type NavKey = "discover" | "create" | "library";
@@ -14,10 +15,12 @@ const NAV: { key: NavKey; href: string; label: string }[] = [
 /**
  * 精進側のshell。対戦側の`AppShell`とは別物で、1024px gateを持たない。
  * `data-skin="practice"`がtokens.cssのlight skinを有効にする。
+ * ダークは`<html>`の`data-practice-theme`で上書きする（13章・14章）。
  */
 export function PracticeShell({ current, children }: { current: NavKey; children: ReactNode }) {
   return (
     <div className="practice-shell" data-skin="practice">
+      <script dangerouslySetInnerHTML={{ __html: practiceThemeBootstrap }} />
       <header className="practice-header">
         <Link className="practice-brand" href="/discover">
           <span className="practice-brand-mark" aria-hidden="true" />
@@ -35,6 +38,7 @@ export function PracticeShell({ current, children }: { current: NavKey; children
             </Link>
           ))}
         </nav>
+        <ThemeSwitch />
         <Link className="practice-battle-link" href="/">
           対戦へ
         </Link>

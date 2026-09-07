@@ -19,6 +19,7 @@ export default function Home() {
           <div className="hero-actions">
             <Link className="button button-primary" href="/battle/new">Roomを作る <span aria-hidden="true">→</span></Link>
             <Link className="button button-quiet" href="/battle/join">IDで参加</Link>
+            <Link className="button button-quiet" href="/discover">問題セットを探す</Link>
           </div>
         </div>
 

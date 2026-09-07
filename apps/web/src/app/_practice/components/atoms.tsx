@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import {
+  SOLVE_STATUS_LABEL,
   VISIBILITY_LABEL,
   difficultyBand,
+  nextSolveStatus,
+  targetBandRange,
+  type BandKey,
   type ProblemSetSummary,
   type ProblemSetTag,
+  type SolveStatus,
 } from "@custom-contest/contracts";
 
 /**
@@ -23,10 +28,27 @@ export function DifficultyDot({ difficulty }: { difficulty: number | null }) {
     );
   }
   return (
-    <span className={`ps-difficulty ps-diff-${band.key}`}>
+    <span className={`ps-difficulty ps-diff-${band.key}`} aria-label={`Difficulty ${difficulty}（${band.label}）`}>
       <span className="ps-diff-dot" aria-hidden="true" />
       <span className="ps-diff-value">{difficulty}</span>
-      <span className="ps-diff-name">{band.label}</span>
+    </span>
+  );
+}
+
+/** 想定者（対象のrating色）。1段だけならその段、複数なら最小段〜最大段。 */
+export function TargetBandChip({ bands }: { bands: readonly BandKey[] }) {
+  const range = targetBandRange(bands);
+  if (!range) return <span className="ps-target is-unset">未設定</span>;
+  const single = range.min.key === range.max.key;
+  return (
+    <span className="ps-target">
+      <span className={`ps-band-chip ps-diff-${range.min.key}`}>{range.min.label}</span>
+      {!single && (
+        <>
+          <span className="ps-target-tilde" aria-hidden="true">〜</span>
+          <span className={`ps-band-chip ps-diff-${range.max.key}`}>{range.max.label}</span>
+        </>
+      )}
     </span>
   );
 }
@@ -43,12 +65,14 @@ export function DifficultyRangeChip({ range }: { range: { min: number; max: numb
   const high = difficultyBand(range.max);
   const name = low && high ? (low.key === high.key ? low.label : `${low.label}〜${high.label}`) : "";
   return (
-    <span className={`ps-difficulty ps-diff-${high?.key ?? "gray"}`}>
+    <span
+      className={`ps-difficulty is-range ps-diff-${high?.key ?? "gray"}`}
+      aria-label={`Difficulty ${range.min}から${range.max}${name ? `（${name}）` : ""}`}
+    >
       <span className="ps-diff-dot" aria-hidden="true" />
       <span className="ps-diff-value">
         {range.min}–{range.max}
       </span>
-      {name && <span className="ps-diff-name">{name}</span>}
     </span>
   );
 }
@@ -112,8 +136,10 @@ export function SetCard({
             <dd>{summary.problemCount}問</dd>
           </div>
           <div>
-            <dt>想定時間</dt>
-            <dd>約{summary.estimatedMinutes}分</dd>
+            <dt>想定者</dt>
+            <dd>
+              <TargetBandChip bands={summary.targetBands} />
+            </dd>
           </div>
         </dl>
       )}
@@ -149,7 +175,6 @@ export function SetRow({ summary }: { summary: ProblemSetSummary }) {
         <DifficultyRangeChip range={summary.difficultyRange} />
       </span>
       <span className="set-row-count">{summary.problemCount}問</span>
-      <span className="set-row-time">約{summary.estimatedMinutes}分</span>
       <span className="set-row-author">{summary.authorName}</span>
       <span className="set-row-likes">
         <span aria-hidden="true">♡</span> {summary.likeCount}
@@ -164,5 +189,94 @@ export function EmptyState({ title, hint }: { title: string; hint: string }) {
       <strong>{title}</strong>
       <p>{hint}</p>
     </div>
+  );
+}
+
+/**
+ * 問題名そのものをAtCoderの問題ページへのリンクにする。
+ * 一覧に「AtCoderで開く」ボタンを並べる代わりに、問題名をクリックする導線へ一本化した。
+ */
+export function ProblemTitleLink({
+  problemId,
+  contestId,
+  title,
+}: {
+  problemId: string;
+  contestId: string;
+  title: string;
+}) {
+  return (
+    <a
+      className="problem-title-link"
+      href={`https://atcoder.jp/contests/${contestId}/tasks/${problemId}`}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {title}
+      <span className="problem-title-external" aria-hidden="true">
+        ↗
+      </span>
+      <span className="sr-only">（AtCoderで開く）</span>
+    </a>
+  );
+}
+
+const SOLVE_STATUS_MARK: Record<SolveStatus, string> = {
+  unsolved: "○",
+  solved: "●",
+  solved_with_editorial: "◐",
+};
+
+/**
+ * 挑戦状態の3値トグル。押すたびに 未着手 → 自力 → 解説 → 未着手 と進む。
+ *
+ * 幅は3状態で同じにしてあるので、押しても隣のDifficultyがずれない。
+ * 色だけで区別させないため、○ ● ◐ の形も併せて出す（ADR-0007）。
+ */
+export function SolveStatusControl({
+  status,
+  problemTitle,
+  compact = false,
+  onChange,
+}: {
+  status: SolveStatus;
+  problemTitle: string;
+  /** 一覧の行に置くとき。文字を出さず印だけにする。 */
+  compact?: boolean;
+  onChange: (next: SolveStatus) => void;
+}) {
+  return (
+    <button
+      className={`solve-status is-${status}${compact ? " is-compact" : ""}`}
+      type="button"
+      onClick={() => onChange(nextSolveStatus(status))}
+      aria-label={`${problemTitle}の挑戦状態: ${SOLVE_STATUS_LABEL[status]}。押すと次の状態へ変わります`}
+      title={SOLVE_STATUS_LABEL[status]}
+    >
+      <span className="solve-status-mark" aria-hidden="true">
+        {SOLVE_STATUS_MARK[status]}
+      </span>
+      {!compact && <span className="solve-status-text">{SOLVE_STATUS_LABEL[status]}</span>}
+    </button>
+  );
+}
+
+/** 挑戦状態の意味を1か所で説明する。行から文字を外したぶん、ここが正解表になる。 */
+export function SolveStatusLegend() {
+  return (
+    <dl className="solve-legend">
+      {(["solved", "solved_with_editorial", "unsolved"] as const).map((status) => (
+        <div key={status}>
+          <dt>
+            <span className={`solve-status is-readonly is-${status}`}>
+              <span className="solve-status-mark" aria-hidden="true">
+                {SOLVE_STATUS_MARK[status]}
+              </span>
+            </span>
+          </dt>
+          <dd>{SOLVE_STATUS_LABEL[status]}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }

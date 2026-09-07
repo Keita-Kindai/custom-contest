@@ -54,3 +54,13 @@ Matchの制限時間内にAtCoderへ提出されたものの、ACなどの最終
 
 **Unlisted Match result（限定公開の対戦結果）**:
 検索一覧や検索エンジンには掲載せず、推測困難なMatch URLを知る人だけが閲覧できる対戦結果。URLを受け取った人は閲覧できるが、Matchを編集する権限は得ない。
+
+**Solve status（挑戦状態）**:
+あるProblemに対する、本人の自己申告による攻略状態。値は`unsolved`（未着手）、`solved`（自力）、`solved_with_editorial`（解説）の3つ。本人が画面で切り替えるものであり、AtCoderの提出結果から自動で決まるものではない。Problem単位で持つので、同じ問題を複数のProblem setへ入れても状態は1つ。
+_Avoid_: Submission evidence（外部から受け取った提出情報であり、自己申告ではない）
+
+**Set progress（進み具合）**:
+1つのProblem setに入っている全Problemの挑戦状態から決まる、そのセットの状態。`all_solved`（全てAC）、`in_progress`（進行中）、`untouched`（未着手）の3つ。解説ACもACとして数える。1問も入っていないセットは未着手として扱う。
+
+**想定者（Target band）**:
+作成者が、そのProblem setを誰へ向けて作ったかを示すAtCoderのrating色。問題から計算するDifficultyが「そのセットが実際にどれくらい難しいか」を表すのに対し、想定者は「作成者が誰に解いてほしいか」を表す。両者は一致しないことがあり、一致させる必要もない。

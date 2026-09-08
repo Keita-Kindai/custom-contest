@@ -125,6 +125,87 @@
   --solve-editorial-soft: oklch(56% 0.11 92 / 0.12);
 }
 
+/*
+ * 精進skinのダークモード（設計13章・14章）。
+ * 2案あり、どちらか一方だけを表示する。混在はしない。
+ * `data-practice-theme`は`<html>`に付く。light skinより詳細度が高いので、
+ * ここで色だけを差し替えれば形とレイアウトはそのまま効く。
+ */
+[data-practice-theme="charcoal"] [data-skin="practice"] {
+  color-scheme: dark;
+
+  --color-canvas: oklch(19% 0.01 60);
+  --color-surface-0: oklch(24% 0.012 60);
+  --color-surface-1: oklch(26% 0.012 60);
+  --color-surface-2: oklch(29% 0.012 60);
+  --color-surface-3: oklch(32% 0.012 60);
+  --color-rule: oklch(32% 0.012 60);
+  --color-rule-strong: oklch(40% 0.012 60);
+  --color-ink: oklch(94% 0.005 60);
+  --color-ink-2: oklch(82% 0.008 60);
+  --color-muted: oklch(65% 0.01 60);
+  --color-faint: oklch(55% 0.01 60);
+
+  --color-accent: oklch(75% 0.17 45);
+  --color-accent-strong: oklch(80% 0.17 45);
+  --color-accent-ink: oklch(19% 0.01 60);
+  --color-accent-soft: oklch(30% 0.04 45);
+  --color-caution: oklch(76% 0.13 75);
+  --color-danger: oklch(68% 0.17 25);
+  --color-danger-soft: oklch(68% 0.17 25 / 0.16);
+  --color-focus: oklch(80% 0.14 52);
+  --color-scrim: oklch(12% 0.01 60 / 0.6);
+  --color-scrim-strong: oklch(12% 0.01 60 / 0.78);
+}
+
+[data-practice-theme="soft"] [data-skin="practice"] {
+  color-scheme: dark;
+
+  --color-canvas: oklch(28% 0.035 258);
+  --color-surface-0: oklch(33% 0.04 258);
+  --color-surface-1: oklch(35% 0.04 258);
+  --color-surface-2: oklch(38% 0.042 258);
+  --color-surface-3: oklch(41% 0.043 258);
+  --color-rule: oklch(44% 0.045 258);
+  --color-rule-strong: oklch(50% 0.045 258);
+  --color-ink: oklch(96% 0.012 255);
+  --color-ink-2: oklch(88% 0.02 255);
+  --color-muted: oklch(78% 0.025 255);
+  --color-faint: oklch(68% 0.025 255);
+
+  --color-accent: oklch(72% 0.14 45);
+  --color-accent-strong: oklch(78% 0.14 45);
+  --color-accent-ink: oklch(20% 0.035 258);
+  --color-accent-soft: oklch(40% 0.03 45);
+  --color-caution: oklch(76% 0.12 75);
+  --color-danger: oklch(70% 0.16 25);
+  --color-danger-soft: oklch(70% 0.16 25 / 0.16);
+  --color-focus: oklch(80% 0.12 255);
+  --color-scrim: oklch(16% 0.03 258 / 0.6);
+  --color-scrim-strong: oklch(16% 0.03 258 / 0.78);
+}
+
+/*
+ * rating色は暗い面の上では沈むので、両ダーク案で同じだけ明るくする。
+ * 段の順序と色相は変えない。AtCoderの色と読み替えができなくなるため。
+ */
+[data-practice-theme="charcoal"] [data-skin="practice"],
+[data-practice-theme="soft"] [data-skin="practice"] {
+  --difficulty-gray: oklch(72% 0.008 60);
+  --difficulty-brown: oklch(65% 0.075 55);
+  --difficulty-green: oklch(70% 0.14 145);
+  --difficulty-cyan: oklch(74% 0.1 195);
+  --difficulty-blue: oklch(68% 0.14 255);
+  --difficulty-yellow: oklch(80% 0.13 95);
+  --difficulty-orange: oklch(74% 0.15 62);
+  --difficulty-red: oklch(68% 0.18 27);
+
+  --solve-solved: oklch(68% 0.13 158);
+  --solve-solved-soft: oklch(68% 0.13 158 / 0.16);
+  --solve-editorial: oklch(72% 0.12 92);
+  --solve-editorial-soft: oklch(72% 0.12 92 / 0.18);
+}
+
 [data-skin="practice"] .ps-diff-gray { --difficulty-color: var(--difficulty-gray); }
 [data-skin="practice"] .ps-diff-brown { --difficulty-color: var(--difficulty-brown); }
 [data-skin="practice"] .ps-diff-green { --difficulty-color: var(--difficulty-green); }

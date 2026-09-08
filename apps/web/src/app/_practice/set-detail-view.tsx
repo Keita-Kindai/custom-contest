@@ -19,7 +19,7 @@ import {
   SolveStatusControl,
   SolveStatusLegend,
   TagPill,
-  TargetBandChip,
+  TargetBandDots,
 } from "./components/atoms";
 import { CURRENT_AUTHOR } from "./data/fixtures";
 import { problemSetRepository } from "./data/repository";
@@ -102,7 +102,7 @@ export function SetDetailView({ setId }: { setId: string }) {
             <div>
               <dt>想定者</dt>
               <dd>
-                <TargetBandChip bands={set.targetBands} />
+                <TargetBandDots bands={set.targetBands} />
               </dd>
             </div>
             <div>

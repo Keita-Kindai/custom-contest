@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react";
 
 import {
+  DIFFICULTY_BANDS,
   PROBLEM_SET_SORT_LABEL,
+  orderedTargetBands,
+  type BandKey,
   type DiscoverQuery,
   type ProblemSetSort,
   type ProblemSetTag,
@@ -20,14 +23,15 @@ export function DiscoverView() {
   const [draftQuery, setDraftQuery] = useState("");
   const [keyword, setKeyword] = useState("");
   const [tags, setTags] = useState<ProblemSetTag[]>([]);
+  const [bands, setBands] = useState<BandKey[]>([]);
   const [sort, setSort] = useState<ProblemSetSort>("popular");
 
   // 検索語かタグが入ったら、特集グリッドから結果一覧へ切り替える（13章）。
-  const searching = keyword.trim() !== "" || tags.length > 0;
+  const searching = keyword.trim() !== "" || tags.length > 0 || bands.length > 0;
 
   const query = useMemo<DiscoverQuery>(
-    () => ({ q: keyword, tags, sort, difficultyMin: null, difficultyMax: null }),
-    [keyword, tags, sort],
+    () => ({ q: keyword, tags, bands, sort, difficultyMin: null, difficultyMax: null }),
+    [keyword, tags, bands, sort],
   );
 
   const results = usePracticeData(() => problemSetRepository.discover(query), [query]);
@@ -38,8 +42,15 @@ export function DiscoverView() {
     setTags((current) => (current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]));
   }
 
+  function toggleBand(band: BandKey) {
+    setBands((current) =>
+      current.includes(band) ? current.filter((item) => item !== band) : [...current, band],
+    );
+  }
+
   function clearAll() {
     setTags([]);
+    setBands([]);
     setKeyword("");
     setDraftQuery("");
   }
@@ -82,6 +93,31 @@ export function DiscoverView() {
           {QUICK_TAGS.map((tag) => (
             <TagPill key={tag} tag={tag} selected={tags.includes(tag)} onToggle={() => toggleTag(tag)} />
           ))}
+        </div>
+
+        <div className="band-filter">
+          <span className="ps-field-label">対象者で絞る</span>
+          <div className="band-filter-dots">
+            {DIFFICULTY_BANDS.map((band) => (
+              <button
+                key={band.key}
+                type="button"
+                className={`band-filter-dot ps-diff-${band.key}${bands.includes(band.key) ? " is-selected" : ""}`}
+                aria-pressed={bands.includes(band.key)}
+                aria-label={`${band.label}を対象にしたセットで絞る`}
+                title={band.label}
+                onClick={() => toggleBand(band.key)}
+              />
+            ))}
+          </div>
+          {bands.length > 0 && (
+            <button className="band-filter-clear" type="button" onClick={() => setBands([])}>
+              {orderedTargetBands(bands)
+                .map((band) => band.label)
+                .join("・")}
+              を選択中 <span aria-hidden="true">×</span>
+            </button>
+          )}
         </div>
 
         {searching && (

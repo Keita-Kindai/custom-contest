@@ -49,6 +49,13 @@ export const VISIBILITY_LABEL: Record<Visibility, string> = {
   private: "非公開",
 };
 
+/** 公開範囲の選択肢に添える説明。ラベルだけでは何が起きるか読み取れないため。 */
+export const VISIBILITY_HELP: Record<Visibility, string> = {
+  public: "Discoverに掲載され、誰でも見つけられます",
+  unlisted: "リンクを知っている人だけが開けます。検索には出ません",
+  private: "自分だけが見られます",
+};
+
 /** 保存済みか下書きか。下書きは一覧で公開範囲の代わりに「下書き」を出す。 */
 export const problemSetStatusSchema = z.enum(["draft", "published"]);
 export type ProblemSetStatus = z.infer<typeof problemSetStatusSchema>;
@@ -72,8 +79,8 @@ export const problemSetSchema = z.object({
   status: problemSetStatusSchema,
   problems: z.array(problemSetItemSchema).max(50),
   /**
-   * 作成者が想定した対象のrating色。押した段だけを持ち、表示では最小段〜最大段にまとめる。
-   * 1段だけならその段だけを出す。問題から計算するDifficultyとは別で、作成者の意図を表す。
+   * 作成者が想定した対象のrating色。押した段だけを持ち、表示でも押した段の色をその数だけ並べる。
+   * 問題から計算するDifficultyとは別で、作成者の意図を表す。
    */
   targetBands: z.array(bandKeySchema).max(8).default([]),
   /** 認証がないため暫定値。DBと認証の導入まで実データにならない。 */
@@ -123,6 +130,8 @@ export const PROBLEM_SET_SORT_LABEL: Record<ProblemSetSort, string> = {
 export const discoverQuerySchema = z.object({
   q: z.string().trim().max(80).default(""),
   tags: z.array(problemSetTagSchema).default([]),
+  /** 作成者が選んだ想定者の色。1つでも一致すればそのセットを残す。 */
+  bands: z.array(bandKeySchema).max(8).default([]),
   sort: problemSetSortSchema.default("popular"),
   difficultyMin: z.number().int().nullable().default(null),
   difficultyMax: z.number().int().nullable().default(null),
@@ -193,13 +202,12 @@ export const DIFFICULTY_BANDS = [
 
 export type DifficultyBand = (typeof DIFFICULTY_BANDS)[number];
 
-/** 押された段を表示順に並べ、最小段と最大段を返す。1段だけなら min と max が同じになる。 */
-export function targetBandRange(
-  bands: readonly BandKey[],
-): { min: DifficultyBand; max: DifficultyBand } | null {
-  const ordered = DIFFICULTY_BANDS.filter((band) => bands.includes(band.key));
-  if (ordered.length === 0) return null;
-  return { min: ordered[0]!, max: ordered[ordered.length - 1]! };
+/**
+ * 押された段を表示順に並べる。押した段だけを返すので、間の段は含まない。
+ * 表示は最小〜最大のレンジではなく、選んだ色をその数だけ並べる形にしている。
+ */
+export function orderedTargetBands(bands: readonly BandKey[]): DifficultyBand[] {
+  return DIFFICULTY_BANDS.filter((band) => bands.includes(band.key));
 }
 
 export function difficultyBand(difficulty: number | null): DifficultyBand | null {

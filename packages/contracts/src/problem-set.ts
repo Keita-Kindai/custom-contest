@@ -66,6 +66,12 @@ export const problemSetIdSchema = z.string().regex(/^ps_[0-9a-z]{10}$/);
 export const problemSetItemSchema = catalogProblemSchema;
 export type ProblemSetItem = z.infer<typeof problemSetItemSchema>;
 
+/**
+ * 1セットに入れられる問題数の上限。
+ * 一括追加は1ページ最大100件を返すので、作成画面はこの値で打ち切る必要がある。
+ */
+export const MAX_PROBLEMS_PER_SET = 50;
+
 /** 想定者に使うrating色のkey。DIFFICULTY_BANDSと同じ段。 */
 export const bandKeySchema = z.enum(["gray", "brown", "green", "cyan", "blue", "yellow", "orange", "red"]);
 export type BandKey = z.infer<typeof bandKeySchema>;
@@ -77,7 +83,7 @@ export const problemSetSchema = z.object({
   tags: z.array(problemSetTagSchema).max(6),
   visibility: visibilitySchema,
   status: problemSetStatusSchema,
-  problems: z.array(problemSetItemSchema).max(50),
+  problems: z.array(problemSetItemSchema).max(MAX_PROBLEMS_PER_SET),
   /**
    * 作成者が想定した対象のrating色。押した段だけを持ち、表示でも押した段の色をその数だけ並べる。
    * 問題から計算するDifficultyとは別で、作成者の意図を表す。

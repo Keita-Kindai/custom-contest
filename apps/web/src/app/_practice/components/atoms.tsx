@@ -99,11 +99,71 @@ export function TagPill({
 }
 
 /**
- * Discoverとマイページ共通のカード（15a）。
- * ① タイトル＋いいね数 ② タグを省略せず全件 ③ 対象者の色ドットと問題数 ④ 作成者名。
+ * カードのタグ欄は2行までとし、入り切らない分は「+N」でまとめる。
+ *
+ * 実際の幅は測らない。カードの数だけレイアウトを測ると、並べ替えや絞り込みのたびに
+ * 再計算が要る。代わりに文字幅から見積もる。CSS側でも2行の高さに固定してあるので、
+ * この見積もりが多少ずれてもカードの高さは揃ったままになる。
+ */
+const TAG_ROWS = 2;
+/** `.tag-pill.is-small`の左右padding（8px×2）と境界線（1px×2）。 */
+const TAG_PILL_FRAME_PX = 18;
+const TAG_GAP_PX = 8;
+/**
+ * タグ欄の内幅。1140pxのグリッドで測った値（featured 327px、list 231px）から少し引いてある。
+ * 見積もりが実寸を上回ると、2行に固定した枠からタグがはみ出して隠れるため。
+ */
+const TAG_ROW_WIDTH_PX: Record<"featured" | "list", number> = { featured: 320, list: 224 };
+
+/** 11pxの日本語は約11px、半角は約6px。 */
+function estimateTagWidth(tag: string): number {
+  let width = TAG_PILL_FRAME_PX;
+  for (const char of tag) width += char.charCodeAt(0) < 0x100 ? 6 : 11;
+  return width;
+}
+
+/** 与えた並びが2行に収まるか。 */
+function fitsInRows(widths: readonly number[], rowWidth: number): boolean {
+  let row = 1;
+  let used = 0;
+  for (const width of widths) {
+    const need = used === 0 ? width : used + TAG_GAP_PX + width;
+    if (need <= rowWidth) {
+      used = need;
+      continue;
+    }
+    row += 1;
+    if (row > TAG_ROWS || width > rowWidth) return false;
+    used = width;
+  }
+  return true;
+}
+
+function splitCardTags(
+  tags: readonly string[],
+  variant: "featured" | "list",
+): { shown: string[]; hidden: number } {
+  const rowWidth = TAG_ROW_WIDTH_PX[variant];
+  const widths = tags.map(estimateTagWidth);
+  if (fitsInRows(widths, rowWidth)) return { shown: [...tags], hidden: 0 };
+  // あふれる場合は「+N」の分も含めて収まる件数まで減らす。タグは最大6個なので総当たりで足りる。
+  for (let shownCount = tags.length - 1; shownCount >= 0; shownCount -= 1) {
+    const hidden = tags.length - shownCount;
+    const trial = [...widths.slice(0, shownCount), estimateTagWidth(`+${hidden}`)];
+    if (fitsInRows(trial, rowWidth)) return { shown: tags.slice(0, shownCount), hidden };
+  }
+  return { shown: [], hidden: tags.length };
+}
+
+/**
+ * Discoverとマイページ共通のカード。
+ * ① タイトル＋公開範囲 ② タグ（2行まで） ③ 対象者の色ドットと問題数 ④ 作成者名＋いいね数。
  *
  * Difficultyの数値レンジは載せない。カード幅に収まらないうえ、対象者の色と役割が重なるため、
  * 「誰向けか」は対象者のドット列だけで表す。
+ *
+ * タイトルは2行、タグは2行で高さを固定してある。そのため対象者・問題数・作成者名・いいね数は、
+ * 中身の量にかかわらず全カードで同じ高さに並ぶ。
  */
 export function SetCard({
   summary,
@@ -114,24 +174,37 @@ export function SetCard({
   variant?: "featured" | "list";
   showVisibility?: boolean;
 }) {
+  const tags = splitCardTags(summary.tags, variant);
+
   return (
     <Link className={`set-card set-card-${variant}`} href={`/sets/${summary.setId}`}>
       <div className="set-card-head">
         <h3 className="set-card-title">{summary.title}</h3>
-        <span className="set-card-likes" aria-label={`いいね ${summary.likeCount}`}>
-          <span aria-hidden="true">♡</span> {summary.likeCount}
-        </span>
+        {showVisibility && (
+          <span className={`visibility-pill is-${summary.status === "draft" ? "draft" : summary.visibility}`}>
+            {summary.status === "draft" ? "下書き" : VISIBILITY_LABEL[summary.visibility]}
+          </span>
+        )}
       </div>
 
-      {summary.tags.length > 0 && (
-        <div className="set-card-tags">
-          {summary.tags.map((tag) => (
-            <span className="tag-pill is-small" key={tag}>
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="set-card-tags">
+        {summary.tags.length === 0 ? (
+          <span className="tag-pill is-small is-empty">タグなし</span>
+        ) : (
+          <>
+            {tags.shown.map((tag) => (
+              <span className="tag-pill is-small" key={tag}>
+                {tag}
+              </span>
+            ))}
+            {tags.hidden > 0 && (
+              <span className="tag-pill is-small is-more" title={summary.tags.join("・")}>
+                +{tags.hidden}
+              </span>
+            )}
+          </>
+        )}
+      </div>
 
       <dl className="set-card-facts">
         <div>
@@ -147,39 +220,11 @@ export function SetCard({
       </dl>
 
       <div className="set-card-foot">
-        <span className="set-card-author">
-          {summary.status === "draft" ? `${summary.problemCount}問構成中` : summary.authorName}
+        <span className="set-card-author">{summary.authorName}</span>
+        <span className="set-card-likes" aria-label={`いいね ${summary.likeCount}`}>
+          <span aria-hidden="true">♡</span> {summary.likeCount}
         </span>
-        {showVisibility && (
-          <span className={`visibility-pill is-${summary.status === "draft" ? "draft" : summary.visibility}`}>
-            {summary.status === "draft" ? "下書き" : VISIBILITY_LABEL[summary.visibility]}
-          </span>
-        )}
       </div>
-    </Link>
-  );
-}
-
-/** 検索結果の1行（高密度・比較重視）。 */
-export function SetRow({ summary }: { summary: ProblemSetSummary }) {
-  return (
-    <Link className="set-row" href={`/sets/${summary.setId}`}>
-      <span className="set-row-title">{summary.title}</span>
-      <span className="set-row-tags">
-        {summary.tags.slice(0, 2).map((tag) => (
-          <span className="tag-pill is-small" key={tag}>
-            {tag}
-          </span>
-        ))}
-      </span>
-      <span className="set-row-difficulty">
-        <DifficultyRangeChip range={summary.difficultyRange} />
-      </span>
-      <span className="set-row-count">{summary.problemCount}問</span>
-      <span className="set-row-author">{summary.authorName}</span>
-      <span className="set-row-likes">
-        <span aria-hidden="true">♡</span> {summary.likeCount}
-      </span>
     </Link>
   );
 }

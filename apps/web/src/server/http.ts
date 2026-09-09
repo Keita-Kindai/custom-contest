@@ -44,7 +44,8 @@ export function isErrorResponse<T>(value: T | Response): value is Response {
 }
 
 export function statusForCode(code: ApiErrorCode): number {
-  if (code === "room_not_found" || code === "match_not_found") return 404;
+  if (code === "room_not_found" || code === "match_not_found" || code === "set_not_found") return 404;
+  if (code === "unauthorized") return 401;
   if (code === "not_a_participant" || code === "forbidden" || code === "not_host") return 403;
   if (code === "storage_unavailable") return 503;
   if (code === "room_full") return 409;

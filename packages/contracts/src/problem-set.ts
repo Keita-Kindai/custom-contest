@@ -255,6 +255,13 @@ export function nextSolveStatus(current: SolveStatus): SolveStatus {
   return SOLVE_STATUS_ORDER[(index + 1) % SOLVE_STATUS_ORDER.length]!;
 }
 
+/** `PUT /api/problem-sets/:setId/solve-status` の本文。 */
+export const solveStatusUpdateSchema = z.object({
+  problemId: z.string().min(1).max(64),
+  status: solveStatusSchema,
+});
+export type SolveStatusUpdate = z.infer<typeof solveStatusUpdateSchema>;
+
 /**
  * 1つのセットの中の挑戦状態。problemIdをkeyにする。記録のない問題は`unsolved`として扱う。
  */

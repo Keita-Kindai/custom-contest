@@ -1,34 +1,34 @@
 "use client";
 
-import {
-  difficultyRangeOf,
-  type DiscoverQuery,
-  type LibraryTab,
-  type ProblemSet,
-  type ProblemSetSummary,
-  type SetSolveStatusMap,
-  type SolveStatus,
-  type SolveStatusMap,
+import type {
+  DiscoverQuery,
+  LibraryTab,
+  ProblemSet,
+  ProblemSetInput,
+  ProblemSetSummary,
+  SetSolveStatusMap,
+  SolveStatus,
+  SolveStatusMap,
 } from "@custom-contest/contracts";
 
-import { CURRENT_AUTHOR, seedProblemSets } from "./fixtures";
-
 /**
- * 問題セットの読み書き境界。ADR-0007により、この段階ではPostgreSQLを使わない。
- * 実装をこのinterfaceの背後へ閉じてあるので、DB導入時の変更はここ1ファイルで済む。
+ * 問題セットの読み書き境界（ADR-0011）。
  *
- * 現在の実装はブラウザー内保存のため、作ったセットはその端末にしか残らない。
+ * 実体はPostgreSQLで、この層はserverの`/api/problem-sets/*`を叩くだけ。
+ * 持ち主やいいねの本人は、serverがsessionから決める。この層は誰なのかを送らない。
+ *
+ * ブラウザー内保存はもう使わない。作ったセットはアカウントに残り、別の端末からも開ける。
  */
 export type ProblemSetRepository = {
   discover(query: DiscoverQuery): Promise<ProblemSetSummary[]>;
   featured(kind: "new" | "liked"): Promise<ProblemSetSummary[]>;
   get(setId: string): Promise<ProblemSet | null>;
-  save(set: ProblemSet): Promise<ProblemSet>;
+  save(input: ProblemSetInput): Promise<ProblemSet>;
   remove(setId: string): Promise<void>;
   library(tab: LibraryTab): Promise<ProblemSetSummary[]>;
   counts(): Promise<Record<LibraryTab, number>>;
-  isLiked(setId: string): Promise<boolean>;
-  isBookmarked(setId: string): Promise<boolean>;
+  /** 自分とそのセットの関係。未ログインならすべてfalse。 */
+  viewerState(setId: string): Promise<ViewerState>;
   toggleLike(setId: string): Promise<boolean>;
   toggleBookmark(setId: string): Promise<boolean>;
   markRecent(setId: string): Promise<void>;
@@ -39,291 +39,161 @@ export type ProblemSetRepository = {
   setSolveStatus(setId: string, problemId: string, status: SolveStatus): Promise<SolveStatusMap>;
 };
 
-const STORAGE_KEY = "custom-contest:problem-sets:v1";
+export type ViewerState = { isOwner: boolean; liked: boolean; bookmarked: boolean };
 
-type StoredState = {
-  /** 利用者が作成・編集したセット。seedと同じsetIdなら上書きとして扱う。 */
-  sets: ProblemSet[];
-  /** seedのうち削除したもの。 */
-  removed: string[];
-  likes: string[];
-  bookmarks: string[];
-  recent: string[];
-  /** setId単位の挑戦状態。記録はセットの中で閉じる。 */
-  solveStatuses: SetSolveStatusMap;
-};
+const EMPTY_VIEWER_STATE: ViewerState = { isOwner: false, liked: false, bookmarked: false };
+const EMPTY_COUNTS: Record<LibraryTab, number> = { created: 0, bookmarked: 0, liked: 0, recent: 0 };
 
-const EMPTY_STATE: StoredState = {
-  sets: [],
-  removed: [],
-  likes: [],
-  bookmarks: [],
-  recent: [],
-  solveStatuses: {},
-};
-
-/**
- * 保存済みのセットを現在の形へ揃える。
- * STORAGE_KEYはv1のままなので、`targetBands`を導入する前に保存されたセットにはこのfieldがない。
- * そのまま返すと想定者の表示で`undefined`を読むため、ここで空配列にする。
- */
-function normalizeStoredSet(set: ProblemSet): ProblemSet {
-  if (Array.isArray(set.targetBands)) return set;
-  return { ...set, targetBands: [] };
-}
-
-/**
- * 挑戦状態を現在の形へ揃える。
- * 以前は`problemId -> 状態`の1階層で、今は`setId -> problemId -> 状態`の2階層になっている。
- * 古い形は値が文字列なので、それを見分けて捨てる。セットをまたいだ記録を
- * どのセットのものと決めることはできないため、引き継がずに未着手から始める。
- */
-function normalizeSolveStatuses(raw: unknown): SetSolveStatusMap {
-  if (!raw || typeof raw !== "object") return {};
-  const entries = Object.entries(raw as Record<string, unknown>);
-  if (entries.some(([, value]) => typeof value !== "object" || value === null)) return {};
-  return Object.fromEntries(entries as [string, SolveStatusMap][]);
-}
-
-function readState(): StoredState {
-  if (typeof window === "undefined") return EMPTY_STATE;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY_STATE;
-    const parsed = JSON.parse(raw) as Partial<StoredState>;
-    return {
-      sets: Array.isArray(parsed.sets) ? parsed.sets.map(normalizeStoredSet) : [],
-      removed: Array.isArray(parsed.removed) ? parsed.removed : [],
-      likes: Array.isArray(parsed.likes) ? parsed.likes : [],
-      bookmarks: Array.isArray(parsed.bookmarks) ? parsed.bookmarks : [],
-      recent: Array.isArray(parsed.recent) ? parsed.recent : [],
-      solveStatuses: normalizeSolveStatuses(parsed.solveStatuses),
-    };
-  } catch {
-    // 壊れた保存内容でも画面が開けるように、seedだけで続行する。
-    return EMPTY_STATE;
+/** serverが返したエラー。画面はこのmessageをそのまま出せる。 */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly fix: string | null,
+  ) {
+    super(message);
+    this.name = "ApiError";
   }
 }
 
-function writeState(state: StoredState): void {
-  if (typeof window === "undefined") return;
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`/api/problem-sets${path}`, { cache: "no-store", ...init });
+  if (response.ok) return (await response.json()) as T;
+
+  const body = (await response.json().catch(() => null)) as
+    | { error?: { message?: string; fix?: string | null } }
+    | null;
+  throw new ApiError(
+    body?.error?.message ?? "通信に失敗しました。",
+    response.status,
+    body?.error?.fix ?? null,
+  );
+}
+
+/**
+ * ログインしていないときに呼ばれた読み出しは、空として扱う。
+ * マイページのような画面は未ログインでも開けるので、401で落とさず空で描く。
+ */
+async function requestOrEmpty<T>(path: string, empty: T): Promise<T> {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch {
-    // 保存できなくても表示は続ける。
+    return await request<T>(path);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return empty;
+    throw error;
   }
-  notify();
+}
+
+function jsonBody(value: unknown): RequestInit {
+  return {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(value),
+  };
+}
+
+function discoverParams(query: DiscoverQuery): string {
+  const params = new URLSearchParams();
+  if (query.q) params.set("q", query.q);
+  for (const tag of query.tags) params.append("tags", tag);
+  for (const band of query.bands) params.append("bands", band);
+  params.set("sort", query.sort);
+  if (query.difficultyMin !== null) params.set("difficultyMin", String(query.difficultyMin));
+  if (query.difficultyMax !== null) params.set("difficultyMax", String(query.difficultyMax));
+  return params.toString();
 }
 
 const listeners = new Set<() => void>();
+
+/** 書き込みのあとに一覧を取り直すための購読。 */
+export function subscribeProblemSets(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
 
 function notify(): void {
   for (const listener of listeners) listener();
 }
 
-/** 保存内容が変わったときに再描画するための購読。 */
-export function subscribeProblemSets(listener: () => void): () => void {
-  listeners.add(listener);
-  const onStorage = (event: StorageEvent) => {
-    if (event.key === STORAGE_KEY) listener();
-  };
-  window.addEventListener("storage", onStorage);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", onStorage);
-  };
-}
-
-/** seedと保存内容を重ねた、その時点の全セット。 */
-function allSets(): ProblemSet[] {
-  const state = readState();
-  const overrides = new Map(state.sets.map((set) => [set.setId, set]));
-  const removed = new Set(state.removed);
-  const merged = seedProblemSets
-    .filter((set) => !removed.has(set.setId))
-    .map((set) => overrides.get(set.setId) ?? set);
-  const seedIds = new Set(seedProblemSets.map((set) => set.setId));
-  const added = state.sets.filter((set) => !seedIds.has(set.setId));
-  return [...added, ...merged];
-}
-
-export function toSummary(set: ProblemSet): ProblemSetSummary {
-  return {
-    setId: set.setId,
-    title: set.title,
-    tags: set.tags,
-    visibility: set.visibility,
-    status: set.status,
-    authorName: set.authorName,
-    likeCount: set.likeCount,
-    updatedAt: set.updatedAt,
-    targetBands: set.targetBands,
-    problemCount: set.problems.length,
-    problemIds: set.problems.map((problem) => problem.problemId),
-    difficultyRange: difficultyRangeOf(set.problems),
-  };
-}
-
-function matchesQuery(set: ProblemSet, query: DiscoverQuery): boolean {
-  if (query.tags.length > 0 && !query.tags.every((tag) => set.tags.includes(tag))) return false;
-  // 想定者は「どれか1色でも当てはまる」で絞る。全色一致を求めると、
-  // 緑を選んだだけで「茶・緑」向けのセットが消えてしまうため。
-  if (query.bands.length > 0 && !query.bands.some((band) => set.targetBands.includes(band))) return false;
-  if (query.q) {
-    const haystack = `${set.title} ${set.description} ${set.authorName} ${set.tags.join(" ")}`.toLowerCase();
-    const terms = query.q.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.every((term) => haystack.includes(term))) return false;
-  }
-  const range = difficultyRangeOf(set.problems);
-  if (query.difficultyMin !== null && (range === null || range.max < query.difficultyMin)) return false;
-  if (query.difficultyMax !== null && (range === null || range.min > query.difficultyMax)) return false;
-  return true;
-}
-
-function sorted(sets: ProblemSet[], sort: DiscoverQuery["sort"]): ProblemSet[] {
-  const copy = [...sets];
-  if (sort === "new") return copy.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-  // 人気順はいいね数。同数なら新しいものを先に出す。
-  return copy.sort(
-    (a, b) => b.likeCount - a.likeCount || Date.parse(b.updatedAt) - Date.parse(a.updatedAt),
-  );
-}
-
-/**
- * Discoverの一覧へ載せてよいか。
- * 下書きと非公開は自分のものでも載せず、ライブラリからだけ辿れるようにする。
- * 限定公開はURLを知っていれば開けるが、一覧には載せない。
- */
-function listableInDiscover(set: ProblemSet): boolean {
-  return set.status === "published" && set.visibility === "public";
-}
-
 export const problemSetRepository: ProblemSetRepository = {
   async discover(query) {
-    return sorted(allSets().filter(listableInDiscover).filter((set) => matchesQuery(set, query)), query.sort).map(
-      toSummary,
-    );
+    return request<ProblemSetSummary[]>(`?${discoverParams(query)}`);
   },
 
   async featured(kind) {
-    const visible = allSets().filter(listableInDiscover);
-    // 「いいね数が多い」欄は人気順と同じ並び。並び替えの選択肢からは外したが、この欄は残す。
-    return sorted(visible, kind === "new" ? "new" : "popular").slice(0, 4).map(toSummary);
+    return request<ProblemSetSummary[]>(`/featured?kind=${kind}`);
   },
 
   async get(setId) {
-    return allSets().find((set) => set.setId === setId) ?? null;
+    try {
+      return await request<ProblemSet>(`/${setId}`);
+    } catch (error) {
+      // 「無い」と「見せてよくない」はserverが区別せず404を返す。画面も区別しない。
+      if (error instanceof ApiError && error.status === 404) return null;
+      throw error;
+    }
   },
 
-  async save(set) {
-    const state = readState();
-    const next = state.sets.filter((candidate) => candidate.setId !== set.setId);
-    next.push(set);
-    writeState({ ...state, sets: next, removed: state.removed.filter((id) => id !== set.setId) });
-    return set;
+  async save(input) {
+    const saved = await request<ProblemSet>(`/${input.setId}`, jsonBody(input));
+    notify();
+    return saved;
   },
 
   async remove(setId) {
-    const state = readState();
-    writeState({
-      ...state,
-      sets: state.sets.filter((set) => set.setId !== setId),
-      removed: state.removed.includes(setId) ? state.removed : [...state.removed, setId],
-    });
+    await request<{ ok: true }>(`/${setId}`, { method: "DELETE" });
+    notify();
   },
 
   async library(tab) {
-    const state = readState();
-    const sets = allSets();
-    if (tab === "created") {
-      return sets
-        .filter((set) => set.authorName === CURRENT_AUTHOR)
-        .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
-        .map(toSummary);
-    }
-    if (tab === "recent") {
-      return state.recent
-        .map((setId) => sets.find((set) => set.setId === setId))
-        .filter((set): set is ProblemSet => set !== undefined)
-        .map(toSummary);
-    }
-    const ids = new Set(tab === "liked" ? state.likes : state.bookmarks);
-    return sets.filter((set) => ids.has(set.setId)).map(toSummary);
+    return requestOrEmpty<ProblemSetSummary[]>(`/library?tab=${tab}`, []);
   },
 
   async counts() {
-    const state = readState();
-    const sets = allSets();
-    return {
-      created: sets.filter((set) => set.authorName === CURRENT_AUTHOR).length,
-      liked: state.likes.length,
-      bookmarked: state.bookmarks.length,
-      recent: state.recent.length,
-    };
+    return requestOrEmpty<Record<LibraryTab, number>>("/counts", EMPTY_COUNTS);
   },
 
-  async isLiked(setId) {
-    return readState().likes.includes(setId);
-  },
-
-  async isBookmarked(setId) {
-    return readState().bookmarks.includes(setId);
+  async viewerState(setId) {
+    return requestOrEmpty<ViewerState>(`/${setId}/viewer`, EMPTY_VIEWER_STATE);
   },
 
   async toggleLike(setId) {
-    const state = readState();
-    const liked = state.likes.includes(setId);
-    writeState({
-      ...state,
-      likes: liked ? state.likes.filter((id) => id !== setId) : [...state.likes, setId],
-    });
-    return !liked;
+    const { liked } = await request<{ liked: boolean }>(`/${setId}/like`, { method: "POST" });
+    notify();
+    return liked;
   },
 
   async toggleBookmark(setId) {
-    const state = readState();
-    const bookmarked = state.bookmarks.includes(setId);
-    writeState({
-      ...state,
-      bookmarks: bookmarked ? state.bookmarks.filter((id) => id !== setId) : [...state.bookmarks, setId],
+    const { bookmarked } = await request<{ bookmarked: boolean }>(`/${setId}/bookmark`, {
+      method: "POST",
     });
-    return !bookmarked;
+    notify();
+    return bookmarked;
   },
 
   async markRecent(setId) {
-    const state = readState();
-    writeState({ ...state, recent: [setId, ...state.recent.filter((id) => id !== setId)].slice(0, 12) });
+    // 未ログインでも詳細は開ける。記録できなくても画面は続ける。
+    await request<{ ok: true }>(`/${setId}/view`, { method: "POST" }).catch(() => undefined);
   },
 
   async solveStatuses(setId) {
-    return readState().solveStatuses[setId] ?? {};
+    return requestOrEmpty<SolveStatusMap>(`/${setId}/solve-status`, {});
   },
 
   async allSolveStatuses() {
-    return readState().solveStatuses;
+    return requestOrEmpty<SetSolveStatusMap>("/solve-status", {});
   },
 
   async setSolveStatus(setId, problemId, status) {
-    const state = readState();
-    const inSet = { ...(state.solveStatuses[setId] ?? {}) };
-    // 未ACは既定値なので、記録を残さず削除する。
-    if (status === "unsolved") delete inSet[problemId];
-    else inSet[problemId] = status;
-    const next = { ...state.solveStatuses };
-    // 1問も記録がなくなったセットは、keyごと落として保存内容を膨らませない。
-    if (Object.keys(inSet).length === 0) delete next[setId];
-    else next[setId] = inSet;
-    writeState({ ...state, solveStatuses: next });
-    return inSet;
+    const next = await request<SolveStatusMap>(
+      `/${setId}/solve-status`,
+      jsonBody({ problemId, status }),
+    );
+    notify();
+    return next;
   },
 };
-
-/** いいね数の表示値。自分の操作分をseedの値へ足して見せる。 */
-export function displayedLikeCount(summary: ProblemSetSummary, liked: boolean): number {
-  const seed = seedProblemSets.find((set) => set.setId === summary.setId);
-  const base = seed ? seed.likeCount : summary.likeCount;
-  return liked ? base + 1 : base;
-}
 
 export function newProblemSetId(): string {
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";

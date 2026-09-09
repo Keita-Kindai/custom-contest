@@ -101,6 +101,19 @@ export const problemSetSchema = z.object({
 export type ProblemSet = z.infer<typeof problemSetSchema>;
 
 /**
+ * clientが送ってよい範囲。
+ * 作成者・いいね数・時刻はserverが決めるので受け取らない。
+ * clientから持ち主を受け取ると、他人のセットを自分のものとして保存できてしまう。
+ */
+export const problemSetInputSchema = problemSetSchema.omit({
+  authorName: true,
+  likeCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type ProblemSetInput = z.infer<typeof problemSetInputSchema>;
+
+/**
  * 一覧のカードが必要とする形。
  * 13章のカード共通フォーマット（タイトル／カテゴリ・作者／いいね数／公開状態）に対応する。
  */
@@ -254,6 +267,13 @@ export function nextSolveStatus(current: SolveStatus): SolveStatus {
   const index = SOLVE_STATUS_ORDER.indexOf(current);
   return SOLVE_STATUS_ORDER[(index + 1) % SOLVE_STATUS_ORDER.length]!;
 }
+
+/** `PUT /api/problem-sets/:setId/solve-status` の本文。 */
+export const solveStatusUpdateSchema = z.object({
+  problemId: z.string().min(1).max(64),
+  status: solveStatusSchema,
+});
+export type SolveStatusUpdate = z.infer<typeof solveStatusUpdateSchema>;
 
 /**
  * 1つのセットの中の挑戦状態。problemIdをkeyにする。記録のない問題は`unsolved`として扱う。

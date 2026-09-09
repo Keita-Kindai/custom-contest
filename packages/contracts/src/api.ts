@@ -40,6 +40,10 @@ export const apiErrorCodeSchema = z.enum([
   "match_expired",
   "storage_unavailable",
   "problem_pool_empty",
+  /** ログインしていない。精進側の書き込みはすべてログインを要する（ADR-0011）。 */
+  "unauthorized",
+  /** セットが無い、または見せてよい相手ではない。区別せず同じ応答を返す。 */
+  "set_not_found",
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 

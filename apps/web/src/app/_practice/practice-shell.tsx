@@ -81,8 +81,7 @@ export async function PracticeShell({
       <main className="practice-main">{children}</main>
       <footer className="practice-footer">
         <p>
-          サンプルデータで動作しています。作成した問題セットはこの端末のブラウザーにだけ保存され、
-          ほかの端末からは開けません。
+          作成した問題セットはアカウントに保存されます。ログインすれば別の端末からも開けます。
         </p>
       </footer>
     </div>

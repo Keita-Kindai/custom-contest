@@ -1,4 +1,4 @@
-import { MAX_PROBLEMS_PER_SET, problemSetSchema } from "@custom-contest/contracts";
+import { MAX_PROBLEMS_PER_SET, problemSetInputSchema } from "@custom-contest/contracts";
 
 import { errorResponse, isErrorResponse, jsonResponse, parseBody } from "@/server/http";
 import {
@@ -41,7 +41,7 @@ export async function PUT(request: Request, { params }: Params) {
   if (isErrorResponse(viewer)) return viewer;
 
   const { setId } = await params;
-  const body = await parseBody(request, problemSetSchema);
+  const body = await parseBody(request, problemSetInputSchema);
   if (isErrorResponse(body)) return body;
 
   if (body.setId !== setId) {

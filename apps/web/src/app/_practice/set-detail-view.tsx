@@ -21,8 +21,7 @@ import {
   TagPill,
   TargetBandDots,
 } from "./components/atoms";
-import { CURRENT_AUTHOR } from "./data/fixtures";
-import { problemSetRepository } from "./data/repository";
+import { problemSetRepository, type ViewerState } from "./data/repository";
 import { usePracticeData } from "./use-practice-data";
 
 function relativeDays(iso: string): string {
@@ -34,14 +33,16 @@ function relativeDays(iso: string): string {
 
 export function SetDetailView({ setId }: { setId: string }) {
   const { data, loading } = usePracticeData(() => problemSetRepository.get(setId), [setId]);
-  const [liked, setLiked] = useState(false);
-  const [bookmarked, setBookmarked] = useState(false);
+  const [viewer, setViewer] = useState<ViewerState>({
+    isOwner: false,
+    liked: false,
+    bookmarked: false,
+  });
   const [shareStatus, setShareStatus] = useState("共有");
   const [solveStatuses, setSolveStatuses] = useState<SolveStatusMap>({});
 
   useEffect(() => {
-    void problemSetRepository.isLiked(setId).then(setLiked);
-    void problemSetRepository.isBookmarked(setId).then(setBookmarked);
+    void problemSetRepository.viewerState(setId).then(setViewer);
     void problemSetRepository.solveStatuses(setId).then(setSolveStatuses);
     void problemSetRepository.markRecent(setId);
   }, [setId]);
@@ -55,14 +56,14 @@ export function SetDetailView({ setId }: { setId: string }) {
     return (
       <EmptyState
         title="この問題セットは見つかりません"
-        hint="URLを確認するか、Discoverから探し直してください。この端末に保存されていないセットは開けません。"
+        hint="URLを確認するか、Discoverから探し直してください。非公開のセットは作成者だけが開けます。"
       />
     );
   }
 
   const set: ProblemSet = data;
   const range = difficultyRangeOf(set.problems);
-  const likeCount = set.likeCount + (liked ? 1 : 0);
+  const { isOwner, liked, bookmarked } = viewer;
 
   async function copyShareLink() {
     try {
@@ -156,15 +157,23 @@ export function SetDetailView({ setId }: { setId: string }) {
               className={`practice-button is-small${liked ? " is-active" : ""}`}
               type="button"
               aria-pressed={liked}
-              onClick={() => void problemSetRepository.toggleLike(setId).then(setLiked)}
+              onClick={() =>
+                void problemSetRepository
+                  .toggleLike(setId)
+                  .then((next) => setViewer((current) => ({ ...current, liked: next })))
+              }
             >
-              <span aria-hidden="true">{liked ? "♥" : "♡"}</span> {likeCount}
+              <span aria-hidden="true">{liked ? "♥" : "♡"}</span> {set.likeCount}
             </button>
             <button
               className={`practice-button is-small${bookmarked ? " is-active" : ""}`}
               type="button"
               aria-pressed={bookmarked}
-              onClick={() => void problemSetRepository.toggleBookmark(setId).then(setBookmarked)}
+              onClick={() =>
+                void problemSetRepository
+                  .toggleBookmark(setId)
+                  .then((next) => setViewer((current) => ({ ...current, bookmarked: next })))
+              }
             >
               <span aria-hidden="true">▣</span> {bookmarked ? "保存済み" : "保存"}
             </button>
@@ -174,7 +183,7 @@ export function SetDetailView({ setId }: { setId: string }) {
             {shareStatus}
           </button>
 
-          {set.authorName === CURRENT_AUTHOR && (
+          {isOwner && (
             <Link className="practice-button is-small" href={`/sets/${setId}/edit`}>
               このセットを編集
             </Link>
@@ -184,7 +193,7 @@ export function SetDetailView({ setId }: { setId: string }) {
             <span className="ps-field-label">行の色の意味</span>
             <SolveStatusLegend />
             <p className="ps-field-help">
-              問題の右にある印を押すと切り替わります。記録はこの端末のブラウザーにだけ残ります。
+              問題の右にある印を押すと切り替わります。記録はこのセットの中だけで数えます。
             </p>
           </div>
 

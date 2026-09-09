@@ -101,6 +101,19 @@ export const problemSetSchema = z.object({
 export type ProblemSet = z.infer<typeof problemSetSchema>;
 
 /**
+ * clientが送ってよい範囲。
+ * 作成者・いいね数・時刻はserverが決めるので受け取らない。
+ * clientから持ち主を受け取ると、他人のセットを自分のものとして保存できてしまう。
+ */
+export const problemSetInputSchema = problemSetSchema.omit({
+  authorName: true,
+  likeCount: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type ProblemSetInput = z.infer<typeof problemSetInputSchema>;
+
+/**
  * 一覧のカードが必要とする形。
  * 13章のカード共通フォーマット（タイトル／カテゴリ・作者／いいね数／公開状態）に対応する。
  */

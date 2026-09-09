@@ -3,6 +3,7 @@ import {
   type DiscoverQuery,
   type LibraryTab,
   type ProblemSet,
+  type ProblemSetInput,
   type ProblemSetSummary,
   type SetSolveStatusMap,
   type SolveStatus,
@@ -266,7 +267,7 @@ export async function ownerOf(setId: string): Promise<string | null> {
  * 問題は入れ替えで書く。並び順の付け直しを差分で表そうとすると、
  * 一意制約に一時的に触れる順序が出るため、全部消してから入れ直す。
  */
-export async function saveSet(set: ProblemSet, ownerId: string): Promise<void> {
+export async function saveSet(set: ProblemSetInput, ownerId: string): Promise<void> {
   await db().transaction(async (tx) => {
     await tx
       .insert(problemSets)
@@ -363,10 +364,12 @@ export async function counts(viewerId: string): Promise<Record<LibraryTab, numbe
   return row ?? { created: 0, liked: 0, bookmarked: 0, recent: 0 };
 }
 
-export async function viewerState(
-  setId: string,
-  viewerId: string,
-): Promise<{ liked: boolean; bookmarked: boolean }> {
+export type ViewerState = { isOwner: boolean; liked: boolean; bookmarked: boolean };
+
+/** この人がそのセットに対して持っている関係。未ログインならすべてfalse。 */
+export async function viewerState(setId: string, viewerId: string | null): Promise<ViewerState> {
+  if (!viewerId) return { isOwner: false, liked: false, bookmarked: false };
+  const owner = await ownerOf(setId);
   const [liked] = await db()
     .select({ setId: problemSetLikes.setId })
     .from(problemSetLikes)
@@ -377,7 +380,7 @@ export async function viewerState(
     .from(problemSetBookmarks)
     .where(and(eq(problemSetBookmarks.userId, viewerId), eq(problemSetBookmarks.setId, setId)))
     .limit(1);
-  return { liked: Boolean(liked), bookmarked: Boolean(bookmarked) };
+  return { isOwner: owner === viewerId, liked: Boolean(liked), bookmarked: Boolean(bookmarked) };
 }
 
 export async function toggleLike(setId: string, viewerId: string): Promise<boolean> {

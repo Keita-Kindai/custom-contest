@@ -1,18 +1,18 @@
-import { isErrorResponse, jsonResponse } from "@/server/http";
+import { jsonResponse } from "@/server/http";
 import { viewerState } from "@/server/problem-sets/queries";
-import { handleQueryError, requireViewer } from "@/server/problem-sets/route-helpers";
+import { handleQueryError, optionalViewer } from "@/server/problem-sets/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** このセットに自分がいいね・保存をしているか。 */
+/**
+ * このセットに対する自分の関係（持ち主か、いいね済みか、保存済みか）。
+ * 未ログインでも呼べる。その場合はすべてfalseになる。
+ */
 export async function GET(_request: Request, { params }: { params: Promise<{ setId: string }> }) {
-  const viewer = await requireViewer();
-  if (isErrorResponse(viewer)) return viewer;
-
   const { setId } = await params;
   try {
-    return jsonResponse(await viewerState(setId, viewer));
+    return jsonResponse(await viewerState(setId, await optionalViewer()));
   } catch (error) {
     return handleQueryError(error);
   }

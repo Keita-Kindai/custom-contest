@@ -10,12 +10,12 @@ import {
   VISIBILITY_HELP,
   VISIBILITY_LABEL,
   difficultyRangeOf,
-  problemSetSchema,
+  problemSetInputSchema,
   visibilitySchema,
   type BandKey,
   type CatalogProblem,
   type ProblemSearchResponse,
-  type ProblemSet,
+  type ProblemSetInput,
   type ProblemSetTag,
   type Visibility,
 } from "@custom-contest/contracts";
@@ -27,8 +27,7 @@ import {
   TagPill,
   TargetBandDots,
 } from "./components/atoms";
-import { CURRENT_AUTHOR } from "./data/fixtures";
-import { newProblemSetId, problemSetRepository } from "./data/repository";
+import { ApiError, newProblemSetId, problemSetRepository } from "./data/repository";
 
 /** Diff帯のプリセット。検索の絞り込みに使う。 */
 const DIFFICULTY_BANDS_FILTER: { label: string; min: number | null; max: number | null }[] = [
@@ -221,9 +220,8 @@ export function SetEditorView({ setId }: { setId?: string }) {
     }
     setSaving(true);
     setAskVisibility(false);
-    const now = new Date().toISOString();
-    const existing = setId ? await problemSetRepository.get(setId) : null;
-    const set: ProblemSet = {
+    // 作成者・いいね数・時刻はserverが決めるので送らない。
+    const input: ProblemSetInput = {
       setId: setId ?? newProblemSetId(),
       title: title.trim(),
       description: description.trim(),
@@ -232,22 +230,22 @@ export function SetEditorView({ setId }: { setId?: string }) {
       visibility: decided ?? "private",
       status,
       problems,
-      authorName: existing?.authorName ?? CURRENT_AUTHOR,
-      likeCount: existing?.likeCount ?? 0,
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
     };
-    // 保存の直前に契約どおりの形かを確かめる。問題数の上限のような制約は、
+    // 送る前に契約どおりの形かを確かめる。問題数の上限のような制約は、
     // 画面側で防いでいてもここが最後の関門になる。
-    const parsed = problemSetSchema.safeParse(set);
+    const parsed = problemSetInputSchema.safeParse(input);
     if (!parsed.success) {
       setSaving(false);
       setNotice("保存できない内容が含まれています。問題数やタイトルの長さを確認してください。");
       return;
     }
-    await problemSetRepository.save(parsed.data);
-    setSaving(false);
-    router.push(`/sets/${set.setId}`);
+    try {
+      const saved = await problemSetRepository.save(parsed.data);
+      router.push(`/sets/${saved.setId}`);
+    } catch (error) {
+      setSaving(false);
+      setNotice(error instanceof ApiError ? error.message : "保存できませんでした。");
+    }
   }
 
   if (!loaded) return <p className="practice-loading">読み込み中…</p>;

@@ -25,7 +25,7 @@ const EMPTY_HINT: Record<LibraryTab, { title: string; hint: string }> = {
   recent: { title: "最近開いたセットがありません", hint: "Discoverからセットを開くとここに並びます。" },
 };
 
-export function LibraryView() {
+export function LibraryView({ signedIn }: { signedIn: boolean }) {
   const [tab, setTab] = useState<LibraryTab>("created");
   const [grouped, setGrouped] = useState(false);
   const [statuses, setStatuses] = useState<SetSolveStatusMap>({});
@@ -51,13 +51,22 @@ export function LibraryView() {
       <div className="practice-page-head">
         <div>
           <h1>マイページ</h1>
-          <p className="practice-lead">作成・保存したセットはこの端末のブラウザーに保存されます。</p>
+          <p className="practice-lead">作成・保存したセットはアカウントに残ります。</p>
         </div>
         <Link className="practice-button is-primary" href="/sets/new">
           問題セットを作る
         </Link>
       </div>
 
+      {!signedIn && (
+        <EmptyState
+          title="ログインすると自分のセットが並びます"
+          hint="作成・保存・いいね・AC記録はアカウントに残り、別の端末からも開けます。画面右上からログインしてください。"
+        />
+      )}
+
+      {signedIn && (
+      <>
       <dl className="library-stats">
         {libraryTabSchema.options.map((key) => (
           <div className="library-stat" key={key}>
@@ -133,6 +142,8 @@ export function LibraryView() {
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }

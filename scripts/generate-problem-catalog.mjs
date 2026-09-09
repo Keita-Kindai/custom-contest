@@ -30,16 +30,21 @@ function sourceLabel(contestId, problemIndex) {
   if (/^abc\d+$/.test(contestId)) return `ABC${contestId.slice(3)} ${problemIndex}`;
   if (/^arc\d+$/.test(contestId)) return `ARC${contestId.slice(3)} ${problemIndex}`;
   if (/^agc\d+$/.test(contestId)) return `AGC${contestId.slice(3)} ${problemIndex}`;
+  if (/^awc\d+$/.test(contestId)) return `AWC${contestId.slice(3)} ${problemIndex}`;
   if (contestId === "dp") return `EDPC ${problemIndex}`;
   if (contestId === "typical90") return `典型90 ${problemIndex}`;
   if (contestId === "tessoku-book") return `鉄則 ${problemIndex}`;
   if (contestId === "math-and-algorithm") return `数学 ${problemIndex}`;
+  if (contestId === "practice") return `practice ${problemIndex}`;
+  if (/^joi/.test(contestId)) return `${contestId.toUpperCase()} ${problemIndex}`;
   return `${contestId} ${problemIndex}`;
 }
 
 /** 検索の既定タグ。AtCoder Problemsはタグを持たないため、出典から推定できる分だけ付ける。 */
 function inferredTags(contestId) {
   if (contestId === "dp") return ["DP", "EDPC"];
+  if (/^joi/.test(contestId)) return ["JOI"];
+  if (contestId === "practice") return ["入門"];
   if (contestId === "typical90") return ["典型90", "典型"];
   if (contestId === "tessoku-book") return ["典型"];
   if (contestId === "math-and-algorithm") return ["数学"];
@@ -48,11 +53,28 @@ function inferredTags(contestId) {
 
 /**
  * 精進で実際に使う出典だけに絞る。
- * AtCoder Daily Trainingなどの再掲コンテストを入れると、同じ問題が何度も検索へ出る。
+ *
+ * 入れるのは ABC / ARC / AGC / AWC の各回と、JOI系、それに常設の練習セット。
+ * AWCは AtCoder Weekday Contest Beta で、すべて固有の問題を持つ（再掲ではない）。
+ *
+ * 除外の中心は AtCoder Daily Training で、既存問題の再掲だけで1400問を超える。
+ * 入れると同じ問題が検索へ何度も出る。大学・学園祭の自主コンテストと
+ * AHC（ヒューリスティック）も、この画面の「ACしたか」という記録と噛み合わないため入れない。
+ *
+ * `abs`（AtCoder Beginners Selection）は条件に足しても1問も増えない。
+ * 選抜コンテストなので、AtCoder Problems上では元のABCの問題として登録されている。
+ * 唯一そこに無い1問目「Welcome to AtCoder」は`practice`コンテストにあるので、そちらを入れる。
  */
-const PRACTICE_SET_CONTESTS = new Set(["dp", "typical90", "tessoku-book", "math-and-algorithm"]);
+const PRACTICE_SET_CONTESTS = new Set([
+  "dp",
+  "typical90",
+  "tessoku-book",
+  "math-and-algorithm",
+  "practice",
+]);
 function includedContest(contestId) {
-  if (/^(abc|arc|agc)\d+$/.test(contestId)) return true;
+  if (/^(abc|arc|agc|awc)\d+$/.test(contestId)) return true;
+  if (/^joi/.test(contestId)) return true;
   return PRACTICE_SET_CONTESTS.has(contestId);
 }
 

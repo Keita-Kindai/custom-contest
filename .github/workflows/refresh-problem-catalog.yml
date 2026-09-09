@@ -1,0 +1,88 @@
+name: Refresh problem catalog
+
+# 問題カタログはbuild時点の固定JSONなので、放っておくと新しいABCの問題が画面に出ない。
+# 週に一度だけ再生成し、差分があればPRを作る。mergeすると次のdeployで反映される。
+#
+# AtCoder Problemsのデータを使わせてもらっているので、叩く回数は最小にする。
+# この workflow は週1回、3ファイルを取得するだけ。手で回したいときは workflow_dispatch を使う。
+
+on:
+  schedule:
+    # 毎週月曜 03:00 JST（日曜 18:00 UTC）。ABCは土曜夜に開かれるので、その後になる。
+    - cron: "0 18 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: refresh-problem-catalog
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Regenerate the catalog
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+
+      - name: Regenerate the catalog
+        run: node scripts/generate-problem-catalog.mjs
+
+      - name: Open a pull request when the catalog changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # generatedAtは毎回変わるので、それだけの差分ではPRを作らない。
+          if git diff --quiet -- packages/domain/src/problems/catalog.json; then
+            echo "catalog unchanged"
+            exit 0
+          fi
+          added=$(node -e '
+            const fs = require("node:fs");
+            const { execSync } = require("node:child_process");
+            const now = JSON.parse(fs.readFileSync("packages/domain/src/problems/catalog.json", "utf8"));
+            const before = JSON.parse(execSync("git show HEAD:packages/domain/src/problems/catalog.json"));
+            const known = new Set(before.problems.map((p) => p.problemId));
+            const fresh = now.problems.filter((p) => !known.has(p.problemId));
+            console.log(JSON.stringify({ total: now.count, added: fresh.length }));
+          ')
+          total=$(node -e "console.log(JSON.parse(process.argv[1]).total)" "$added")
+          count=$(node -e "console.log(JSON.parse(process.argv[1]).added)" "$added")
+
+          if [ "$count" = "0" ]; then
+            echo "only generatedAt moved; nothing to publish"
+            exit 0
+          fi
+
+          branch="chore/refresh-problem-catalog-$(date -u +%Y%m%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add packages/domain/src/problems/catalog.json
+          git commit -m "chore(catalog): pull in ${count} new problems from AtCoder Problems
+
+          The catalog is a snapshot taken at build time, so problems added to
+          AtCoder after the last deploy are invisible until it is regenerated.
+          This run brings the total to ${total}."
+          git push -u origin "$branch"
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "chore(catalog): ${count} new problems (total ${total})" \
+            --body "Weekly regeneration of \`packages/domain/src/problems/catalog.json\`.
+
+          ${count} problems are new since the last snapshot; the catalog now holds ${total}.
+
+          Merging is enough — \`vercel-build\` seeds the \`problems\` table on the next deploy."

@@ -35,7 +35,8 @@ export const problems = pgTable(
     /** AtCoderのtaskScreenName。 */
     problemId: varchar("problem_id", { length: 64 }).primaryKey(),
     contestId: varchar("contest_id", { length: 32 }).notNull(),
-    problemIndex: varchar("problem_index", { length: 8 }).notNull(),
+    /** ABC/ARC/AGCは1文字だが、JOIは`fortune_telling`のような単語が入る。 */
+    problemIndex: varchar("problem_index", { length: 32 }).notNull(),
     title: text("title").notNull(),
     /** 非公式のDifficulty目安。推定値がない問題はnull。 */
     difficulty: integer("difficulty"),

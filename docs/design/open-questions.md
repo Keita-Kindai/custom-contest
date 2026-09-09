@@ -113,7 +113,11 @@
 | DESIGN-107 | 配備 | 精進側と対戦側のどちらを先に公開するか | User | Resolved: 精進側を先に公開する。精進側はprocess内に状態を持たないため、対戦側の制約を受けない（ADR-0010） |
 | DESIGN-108 | 精進 / 挑戦状態 | ACの記録を問題単位で1つ持つか、セットごとに別々に持つか | User | Resolved: セットごと。セットは一続きの課題なので、進み具合はその中で数える。keyは`(user_id, set_id, problem_id)` |
 | DESIGN-109 | 精進 / 作成者 | カードに出す作成者名をAtCoder IDにするか、OAuthの表示名にするか | User | Resolved: 「ユーザー名」として持つ。初回ログイン時にOAuthの表示名を`users.display_name`へ写し、あとから変更できる。AtCoder IDは自己申告の別項目として残す |
-| DESIGN-110 | 精進 / 問題data | 問題カタログをDBへ入れて参照するか、セットごとに問題情報をコピーし続けるか | User | Resolved: `problems` tableへ入れて参照する。コピーのままだとDifficultyの更新が過去のセットへ届かない（ADR-0011） |
+| DESIGN-110 | 精進 / 問題data | 問題カタログをDBへ入れて参照するか、セットごとに問題情報をコピーし続けるか | User | Resolved: `problems` tableへ入れて参照する。コピーのままだとDifficultyの更新が過去のセットへ届かない（ADR-0011）。ただし問題検索はDBを叩かず固定JSONを引く（DESIGN-115） |
 | DESIGN-111 | 精進 / schema | タグと想定者を配列列で持つか、中間tableに分けるか | User | Resolved: `text[]` + GIN index。値の集合が固定で属性を持たないため、中間tableはJOINが増えるだけ |
 | DESIGN-112 | 精進 / 指標 | 「使用回数」を何の数として定義するか | User | Resolved: 廃止する。何を数えているのか説明できないため、列ごと作らない。contractsの`useCount`も外す |
 | DESIGN-113 | 精進 / 退会 | 利用者が退会したとき、その人が公開したセットをどうするか | User | Resolved: `ON DELETE CASCADE`で一緒に消す。「全部消したい」に応えられる形を優先する |
+| DESIGN-114 | 配備 | 公開構成を Vercel + Neon にするか Vercel + Supabase にするか | User | Resolved: Vercel + Neon。Auth.jsを残す以上Supabaseの利点はStorageとRealtimeだけで、どちらも使わない。Supabase無料は7日の無操作で停止し、一般公開直後に黙って止まるのが最も避けたい壊れ方（ADR-0010） |
+| DESIGN-115 | 精進 / 検索 | 問題検索をDBに当てるか、固定JSONのままにするか | User | Resolved: 固定JSONのまま。入力のたびに走る最多の処理なので、DBに当てるとNeonの月100 CU-hoursをここで使い切る。`problems` tableは外部キーの参照先と表示時のJOINに使う |
+| DESIGN-116 | 精進 / 問題data | カタログの流し込みをいつ走らせるか | User | Resolved: deployのたびに自動でUPSERT。手動にすると忘れたときに外部キー違反で保存が失敗する |
+| DESIGN-117 | 配備 | DBと認証を入れる前に、localStorageのままの版を先に公開するか | User | Resolved: 公開しない。引き継がない以上、試した人の作ったセットが切り替え時に消える。ただし誰にも渡さないdeployは先に行い、Vercel構成の確認をDBの作業と切り離す（ADR-0010） |

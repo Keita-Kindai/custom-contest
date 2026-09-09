@@ -1,6 +1,6 @@
 # ADR-0010: 精進側の先行公開と、無料で維持できるデータベース
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-08
 - Owners: User / Claude Code
 
@@ -84,21 +84,41 @@
 
 ## Decision
 
-TBD（Proposed）。以下を推薦する。
+**公開先はVercel、DBはNeonにする（Option A + Option D）。** 2026-09-09に確定した。
 
-**1. 精進側はまずDBなしでVercel Hobbyへ公開する（Option A + Option G）。**
+比較の最後に残ったのはVercel + NeonとVercel + Supabaseの2つで、次の3点で決めた。
 
-今のコードに変更が要らない。DB・認証・データ移行の判断を待たずに、友人がURLを開ける状態になる。localStorageのままなので、サーバーに個人データを置かず、無料枠を消費するのも検索APIだけになる。
+**1. Supabaseの利点はこのプロジェクトでは働かない。** Supabaseの中心はAuth・Storage・Realtime・RLSである。認証はAuth.jsで実装済みで（ADR-0009）、それを残すと決めた。画像のアップロードは予定がない。Realtimeは精進側に要らず、対戦側はRoom stateがprocess内にある以上どのみち書き直しになる。SupabaseをただのPostgresとして使うなら、選ぶ理由が残らない。
 
-この段階で明示すべき制約は1つ。**作ったセットはその端末のブラウザーにしか残らない。** 画面下部にはすでにこの説明が出ている。
+**2. 使われ方が読めない。** 一般公開する以上、まったく使われない期間もありうる。Supabaseの無料プロジェクトは1週間APIリクエストがないと停止し、手動で再開するまで動かない（2026-02-01に明文化）。公開直後に黙って止まっているのが最も避けたい壊れ方である。Neonは5分でcomputeが落ちるだけで、次のqueryで自動的に戻る。
 
-**2. アカウントを入れる段になったら、DBはNeonにする（Option D）。**
+**3. Vercelとの結びつきが強い。** VercelはVercel Postgresを2024-12にNeonへ移し、現在Neonを推奨DBとしている。Neonのserverless driverはHTTPで通信するため、serverlessでconnection poolingの設定が要らない。Supabaseはserverlessから使うとき、pooled connection stringのtransaction modeを明示的に選ぶ必要がある。おまけとしてNeonのbranchingがVercelのpreview deployと結びつく。
 
-判断軸2を満たす唯一の無料PostgreSQLである。Supabaseは1週間で止まるため採らない。D1は無料枠としては良いが、PostgreSQL前提のADR-0005・ADR-0009を書き直す対価に見合わない。
+### 無料枠の天井は容量ではなく compute 時間
 
-Neonの0.5 GBは、この規模では当分問題にならない。問題セット1件を2 KBとしても、25万件入る。
+Neon無料プランは1プロジェクトあたり月100 CU-hoursで、0.25 CUなら約400時間ぶんにあたる。1か月は約730時間なので、**24時間ずっと誰かが使う状態になると17日目あたりでcomputeが停止し、翌月まで戻らない**（データは消えない）。
 
-**3. AC Duelを公開する段でホスティングを選び直す。**
+つまりNeonとSupabaseは正反対の壊れ方をする。使われなければSupabaseが止まり、使われすぎるとNeonが止まる。後者を選ぶのは、それが「人気が出た」という良い問題であり、その時点で従量課金へ移れば済むからである。Supabase Proの月$25という段差はない。
+
+この規模ではVercel Hobbyの上限（月100 GB転送、100万function実行）も同時に効いてくる。DBだけの問題ではなくなる。
+
+### 検索をDBに当てない
+
+問題検索は入力のたびに走る、このアプリで最も回数の多い処理である。これをPostgreSQLに当てると、誰かが問題を探しているあいだcomputeが起きたままになり、CU-hoursを最も食う経路になる。
+
+カタログはdeployのあいだ変わらない固定データなので、検索は今と同じくメモリ上のJSONを引く。`problems` tableは外部キーの参照先と、セット表示時のJOINのために持つ。詳細はADR-0011にある。
+
+### localStorageのままの版は公開しない（Option Gを採らない）
+
+DBと認証を入れる前に、いまのlocalStorage版を先に公開する案は採らない。
+
+得られるのは「URLを早く渡せる」ことだけである。対して、その版で作られたセットは引き継がないと決めているため（DESIGN-090）、試した人の作ったものが公開の切り替え時にすべて消える。一般公開の第一印象がそれになる。DBの作業は結局あとで行うので、省けるのではなく順番が入れ替わるだけで、告知も2回になる。
+
+ただし**誰にも渡さないdeployは先に行う**。ビルドが通るか、環境変数が効くか、`/api/problems/search`が本番で動くかを、DBの作業と切り離して確かめられる。ここで転んでも原因がDBでないと分かる。
+
+DB化後もlocalStorageは残る。テーマの選択（`custom-contest:practice-theme`）のような、その端末だけの好みを置く場所としては引き続き使う。利用者のデータではないので、DBへ移す理由がない。
+
+### AC Duelを公開する段でホスティングを選び直す
 
 Room stateがprocess内にある限り、対戦側はVercelに載らない。そのときの選択肢は2つで、どちらも別ADRとする。
 
@@ -109,7 +129,8 @@ Room stateがprocess内にある限り、対戦側はVercelに載らない。そ
 
 - ADR-0009の「Fly.io（またはRender）+ Neon」という公開先の記述は、Fly.ioに無料枠がなくなった時点で古い。DBのNeonは残り、hostの部分だけが変わる。このADRが確定したら0009へ追記する。
 - 精進側を先に公開するあいだ、`/signin`はOAuth未設定のまま「未設定」と表示され続ける。認証が要るのは手順2からになる。
-- Vercel Hobbyは非商用限定である。このプロジェクトを収益化するなら、その時点で有料プランへ移る。
+- Vercel Hobbyは非商用限定である。無料で公開するだけなら条件を満たすが、広告や課金を入れた時点で有料プランへ移る。
+- Neonの月100 CU-hoursを使い切るとcomputeが翌月まで停止する。usage画面を見る運用が要る。
 - 手順1で公開したあと手順2でDBへ移すとき、利用者のlocalStorageにあるセットは自動ではアカウントへ紐づかない。移行の導線（「この端末のセットをアカウントへ取り込む」）を別途用意することになる。ADR-0009にも同じ課題が書かれている。
 - Neonのscale to zeroは無効にできない。5分空いたあとの最初のqueryが遅れることを、画面の読み込み表示で吸収する必要がある。
 - Neonのinstant restoreは6時間ぶんしかない。誤って消したデータを翌日に戻すことはできないので、定期的な`pg_dump`を運用に入れる。
@@ -129,6 +150,7 @@ Room stateがprocess内にある限り、対戦側はVercelに載らない。そ
 - Neonの0.5 GBまたは月100 CU時間に近づく。
 - AC Duelを公開する。
 - Neon、Vercelのいずれかが無料枠の条件を変える。
+- 月100 CU-hoursの消費が月の半ばで50%を超える。有料プランへ移す合図になる。
 - 利用者が「別の端末から自分のセットを開きたい」と実際に言う。手順2を始める合図になる。
 
 ## Evidence
@@ -143,3 +165,4 @@ Room stateがprocess内にある限り、対戦側はVercelに載らない。そ
 - Cloudflare D1の料金と上限: <https://developers.cloudflare.com/d1/platform/pricing/>
 - Fly.ioの廃止済みプラン: <https://fly.io/docs/about/discontinued-plans/>
 - Renderの無料枠（無料DBは30日で期限切れ）: <https://render.com/articles/platforms-with-a-real-free-tier-for-developers-in-2026>
+- Neonのプラン別制限（Free = 100 CU-hours/月、0.5 GB、5分でscale to zero）: <https://neon.com/docs/introduction/plans>

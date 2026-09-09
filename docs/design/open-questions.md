@@ -120,3 +120,4 @@
 | DESIGN-114 | 配備 | 公開構成を Vercel + Neon にするか Vercel + Supabase にするか | User | Resolved: Vercel + Neon。Auth.jsを残す以上Supabaseの利点はStorageとRealtimeだけで、どちらも使わない。Supabase無料は7日の無操作で停止し、一般公開直後に黙って止まるのが最も避けたい壊れ方（ADR-0010） |
 | DESIGN-115 | 精進 / 検索 | 問題検索をDBに当てるか、固定JSONのままにするか | User | Resolved: 固定JSONのまま。入力のたびに走る最多の処理なので、DBに当てるとNeonの月100 CU-hoursをここで使い切る。`problems` tableは外部キーの参照先と表示時のJOINに使う |
 | DESIGN-116 | 精進 / 問題data | カタログの流し込みをいつ走らせるか | User | Resolved: deployのたびに自動でUPSERT。手動にすると忘れたときに外部キー違反で保存が失敗する |
+| DESIGN-117 | 配備 | DBと認証を入れる前に、localStorageのままの版を先に公開するか | User | Resolved: 公開しない。引き継がない以上、試した人の作ったセットが切り替え時に消える。ただし誰にも渡さないdeployは先に行い、Vercel構成の確認をDBの作業と切り離す（ADR-0010） |

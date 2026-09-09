@@ -52,15 +52,50 @@ Vercelが最初の候補に挙がったが、Vercelはserverlessであり、proc
 
 ## 設定手順（人が行う）
 
-1. GitHub: Settings → Developer settings → OAuth Apps → New OAuth App。Authorization callback URLは`http://localhost:3000/api/auth/callback/github`（本番は配備先のoriginに置き換える）。
+### ローカル
+
+1. GitHub: Settings → Developer settings → OAuth Apps → New OAuth App。Authorization callback URLは`http://localhost:3000/api/auth/callback/github`。
 2. Google: Cloud Console → APIs & Services → Credentials → OAuth client ID（Web application）。Authorized redirect URIは`http://localhost:3000/api/auth/callback/google`。
 3. `openssl rand -base64 32`で`AUTH_SECRET`を作る。
 4. 5つの値を`apps/web/.env.local`へ書く。
 5. `pnpm db:migrate`で`0002_auth`を適用する。
-6. `/signin`にログインボタンが2つ出る。
+6. `/signin`にログインボタンが出る。providerは環境変数が揃っているものだけ出るので、片方だけでも動く。
+
+### 本番（Vercel + Neon、ADR-0010）
+
+配備先はVercel、DBはNeon。Neonのプロジェクトは**Vercel Marketplaceの統合から作る**。Neonの画面から単体で作ると、接続文字列を手で写すことになるうえ、`DATABASE_URL`がpooledかどうかを自分で確かめる必要がある。統合を使えばpooledの値が入る。
+
+1. VercelへこのrepositoryをImportし、**Root Directoryを`apps/web`**にする。この時点では環境変数が無いのでbuildは失敗してよい。
+2. そのVercelプロジェクトの Storage → Neon から統合を追加する。プランは**Free**を選ぶ。`DATABASE_URL`（pooled）と`DATABASE_URL_UNPOOLED`が自動で入る。アプリが読むのは`DATABASE_URL`だけ。
+3. 割り当てられたドメインで、**本番用のGitHub OAuth Appをもう1つ**作る。1つのAppにcallback URLは1つしか置けないため、localhost用とは分ける。Authorization callback URLは`https://<ドメイン>/api/auth/callback/github`。
+4. Vercelの環境変数へ入れる。`DATABASE_URL`は統合が入れるので手で足さない（二重定義になる）。
+
+   ```
+   AUTH_SECRET         openssl rand -base64 32 で新規に作る。localhost用とは別の値
+   AUTH_GITHUB_ID      本番用AppのClient ID
+   AUTH_GITHUB_SECRET  本番用AppのClient secret
+   AUTH_URL            https://<ドメイン>   （任意。下記）
+   ```
+
+   `AUTH_URL`は必須ではない。Auth.jsはVercel上でrequestのHostヘッダから自分のURLを組み立てるため、
+   利用者が本番ドメインで開く限り正しく動く。明示する意味があるのは、deployごとのURL
+   （`custom-contest-a1b2c3.vercel.app`）で開かれたときで、そのままだとcallbackがそのURLになり、
+   GitHubに登録した値と一致せずログインが失敗する。1行でその失敗を消せるので置いておく。
+
+5. 再デプロイする。`vercel-build`が`db:migrate`と`db:seed-problems`を順に走らせてから`next build`する。
+
+Googleを足すときは`AUTH_GOOGLE_ID`と`AUTH_GOOGLE_SECRET`を追加して再デプロイするだけでよい。コードの変更は要らない。
+
+### providerを2つ出すときの注意
+
+Auth.jsは既定で、同じメールアドレスでも別providerのaccountを既存のuserへ自動では結び付けない（`allowDangerousEmailAccountLinking`が既定でfalse）。GitHubで登録した人が同じメールでGoogleからログインすると、行が結合されず`OAuthAccountNotLinked`になる。自動結合はprovider側のメール確認に依存し、乗っ取りの経路になりうるため、この既定は変えない。
+
+したがってproviderを2つ出す場合、利用者は最初に使ったほうを覚えている必要がある。明示的なaccount連携の導線は別Issueとする。
 
 ## Consequences
 
+- `vercel-build`がdeployのたびにmigrationとカタログの流し込みを走らせる。流し込みを飛ばすと、利用者がカタログの問題を選んだ瞬間に外部キー違反で保存できない（ADR-0011、DESIGN-116）
+- Vercel Marketplaceの統合は、ProductionとDevelopmentの両方へ同じ`DATABASE_URL`を入れる。Preview deployが本番と同じDBを触るため、PRごとに使い捨てDBが要るならNeonのPreviews Integrationを別途入れる
 - `next-auth@5.0.0-beta.32`はbetaである。App Router + React 19に対応した安定版がまだない。安定版が出たら更新する
 - `users`、`accounts`、`sessions`、`verification_tokens`の4 tableが増える。列名はDrizzleAdapterが要求する形に固定される
 - ログインが入ると、問題セットの`authorName`、いいね数、公開範囲を実データにできる（ADR-0007のrevisit trigger）。ただしその移行自体はこのADRの対象外

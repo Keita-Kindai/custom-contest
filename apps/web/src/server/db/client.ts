@@ -25,7 +25,13 @@ export function getPool(): Pool | null {
   if (!globalState.__customContestPool) {
     globalState.__customContestPool = new Pool({
       connectionString,
-      max: 4,
+      /*
+       * serverlessではinstanceごとにこのpoolができる。1 instanceは1 requestしか扱わず、
+       * queryも直列なので1本で足りる。多めに開くとinstanceの数だけ接続が増え、
+       * Neonのpooled endpointの上限へ先に当たる。
+       * 常駐processで動かす開発環境では、並行するrequestのために少し余裕を持たせる。
+       */
+      max: process.env.VERCEL ? 1 : 4,
       connectionTimeoutMillis: 2_000,
       idleTimeoutMillis: 30_000,
     });

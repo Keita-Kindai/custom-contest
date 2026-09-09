@@ -38,6 +38,18 @@ export const atcoderIdSchema = z
   .max(16, "AtCoder IDは16文字以下です。")
   .regex(/^[A-Za-z0-9_]+$/, "AtCoder IDは英数字とアンダースコアだけです。");
 
+/**
+ * 画面に出る名前（ADR-0011）。初回ログイン時にOAuthの表示名から写し、あとから変更できる。
+ *
+ * AtCoder IDの制約は当てはめない。OAuthの表示名には空白も日本語も入るうえ、
+ * AtCoder IDをここへ入れたい人はそう入れられればよく、形式で縛る理由がない。
+ */
+export const displayNameSchema = z
+  .string()
+  .trim()
+  .min(1, "名前を入力してください。")
+  .max(32, "名前は32文字以下です。");
+
 /** サーバー時刻を基準にしたISO 8601文字列。クライアントは自分の時計を加算しない。 */
 export const timestampSchema = z.iso.datetime();
 

@@ -183,8 +183,10 @@ function matchesQuery(set: ProblemSet, query: DiscoverQuery): boolean {
 function sorted(sets: ProblemSet[], sort: DiscoverQuery["sort"]): ProblemSet[] {
   const copy = [...sets];
   if (sort === "new") return copy.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-  if (sort === "liked") return copy.sort((a, b) => b.likeCount - a.likeCount);
-  return copy.sort((a, b) => b.useCount - a.useCount || b.likeCount - a.likeCount);
+  // 人気順はいいね数。同数なら新しいものを先に出す。
+  return copy.sort(
+    (a, b) => b.likeCount - a.likeCount || Date.parse(b.updatedAt) - Date.parse(a.updatedAt),
+  );
 }
 
 /**
@@ -205,7 +207,8 @@ export const problemSetRepository: ProblemSetRepository = {
 
   async featured(kind) {
     const visible = allSets().filter(listableInDiscover);
-    return sorted(visible, kind === "new" ? "new" : "liked").slice(0, 4).map(toSummary);
+    // 「いいね数が多い」欄は人気順と同じ並び。並び替えの選択肢からは外したが、この欄は残す。
+    return sorted(visible, kind === "new" ? "new" : "popular").slice(0, 4).map(toSummary);
   },
 
   async get(setId) {

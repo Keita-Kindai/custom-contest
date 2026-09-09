@@ -105,10 +105,6 @@ export function SetDetailView({ setId }: { setId: string }) {
                 <TargetBandDots bands={set.targetBands} />
               </dd>
             </div>
-            <div>
-              <dt>使用回数</dt>
-              <dd>{set.useCount}</dd>
-            </div>
           </dl>
 
           <div className="ps-section-heading">

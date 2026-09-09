@@ -234,7 +234,6 @@ export function SetEditorView({ setId }: { setId?: string }) {
       problems,
       authorName: existing?.authorName ?? CURRENT_AUTHOR,
       likeCount: existing?.likeCount ?? 0,
-      useCount: existing?.useCount ?? 0,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };

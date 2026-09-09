@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "db:migrate": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/migrate.ts"
+    "db:migrate": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/migrate.ts",
+    "db:seed-problems": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/seed-problems.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "1.11.3",

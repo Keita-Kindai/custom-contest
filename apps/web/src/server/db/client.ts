@@ -1,7 +1,12 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 
+import * as authSchema from "./auth-schema";
+import * as practiceSchema from "./practice-schema";
 import * as schema from "./schema";
+
+/** queryで使えるようにtableをまとめて渡す。 */
+const allTables = { ...schema, ...authSchema, ...practiceSchema };
 
 type DbGlobal = typeof globalThis & {
   __customContestPool?: Pool;
@@ -30,5 +35,5 @@ export function getPool(): Pool | null {
 
 export function getDb() {
   const pool = getPool();
-  return pool ? drizzle(pool, { schema }) : null;
+  return pool ? drizzle(pool, { schema: allTables }) : null;
 }

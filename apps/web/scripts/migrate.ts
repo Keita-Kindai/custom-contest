@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { Client } from "pg";
 
 /** 適用する順序。同じSQLを再実行しても安全な内容だけを並べる。 */
-const MIGRATIONS = ["0001_match_results", "0002_auth"] as const;
+const MIGRATIONS = ["0001_match_results", "0002_auth", "0003_problem_sets"] as const;
 
 const connectionString = process.env.DATABASE_URL?.trim();
 if (!connectionString) {

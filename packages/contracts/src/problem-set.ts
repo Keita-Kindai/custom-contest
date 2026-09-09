@@ -249,10 +249,20 @@ export function nextSolveStatus(current: SolveStatus): SolveStatus {
 }
 
 /**
- * problemIdをkeyにした挑戦状態。問題単位で持つため、同じ問題を複数のセットへ入れても状態は1つ。
- * 記録のない問題は`unsolved`として扱う。
+ * 1つのセットの中の挑戦状態。problemIdをkeyにする。記録のない問題は`unsolved`として扱う。
  */
 export type SolveStatusMap = Record<string, SolveStatus>;
+
+/**
+ * setIdをkeyにした挑戦状態。記録はセットの中で閉じる。
+ *
+ * 以前は問題単位で1つだけ持っていたが、それだと「DP入門で解いた問題」が、
+ * 同じ問題を含む別のセットでも解いた扱いになってしまう。セットは一続きの課題なので、
+ * どこまで進んだかはセットごとに数える。
+ *
+ * この形はDBへ移すときの`(user_id, set_id, problem_id, status)`にそのまま対応する。
+ */
+export type SetSolveStatusMap = Record<string, SolveStatusMap>;
 
 /**
  * 保存したセットを分けるための進み具合。解説ACもACとして数える。

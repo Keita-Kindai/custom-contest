@@ -108,19 +108,6 @@
   font-weight: 700;
 }
 
-.practice-battle-link {
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--color-rule-strong);
-  border-radius: var(--radius-pill);
-  font-weight: 700;
-  font-size: 13px;
-}
-
-.practice-battle-link:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent-strong);
-}
-
 .practice-footer {
   padding: var(--space-6);
   border-top: 1px solid var(--color-rule);
@@ -388,16 +375,15 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
-  /* タイトルが1行でも2行分の高さを取る。下の段の位置をカードごとにずらさないため。 */
-  min-height: calc(var(--set-card-title-line) * 2);
+  min-height: var(--set-card-title-line);
 }
 
-/* 2行を超えるタイトルは省略する。行数が増えるとカードの高さが揃わなくなる。 */
+/* タイトルは1行で切る。行数が増えるとカードの高さが揃わなくなる。 */
 .set-card-title {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
   overflow: hidden;
   font-size: 16px;
   line-height: var(--set-card-title-line);
@@ -1167,8 +1153,17 @@
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
+  align-items: center;
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-rule);
+}
+
+/* 下のpillが何の並びなのかを示す。行を占有して、リンクと同じ行に混ざらないようにする。 */
+.section-jump-title {
+  flex-basis: 100%;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--color-faint);
 }
 
 .practice-shell .section-jump a {

@@ -42,12 +42,12 @@ export function SetDetailView({ setId }: { setId: string }) {
   useEffect(() => {
     void problemSetRepository.isLiked(setId).then(setLiked);
     void problemSetRepository.isBookmarked(setId).then(setBookmarked);
-    void problemSetRepository.solveStatuses().then(setSolveStatuses);
+    void problemSetRepository.solveStatuses(setId).then(setSolveStatuses);
     void problemSetRepository.markRecent(setId);
   }, [setId]);
 
   function changeSolveStatus(problemId: string, next: SolveStatus) {
-    void problemSetRepository.setSolveStatus(problemId, next).then(setSolveStatuses);
+    void problemSetRepository.setSolveStatus(setId, problemId, next).then(setSolveStatuses);
   }
 
   if (loading) return <p className="practice-loading">読み込み中…</p>;
@@ -152,12 +152,7 @@ export function SetDetailView({ setId }: { setId: string }) {
             <button className="practice-button is-primary" type="button" disabled>
               このセットで練習する
             </button>
-            <Link className="practice-button" href="/battle/new">
-              友達と対戦する
-            </Link>
-            <p className="ps-field-help">
-              練習画面は次のフェーズで作ります。対戦は現在の招待制BO1へつながります。
-            </p>
+            <p className="ps-field-help">練習画面は次のフェーズで作ります。</p>
           </div>
 
           <div className="reaction-row">

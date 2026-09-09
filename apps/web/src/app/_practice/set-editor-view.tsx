@@ -42,13 +42,15 @@ const DIFFICULTY_BANDS_FILTER: { label: string; min: number | null; max: number 
 
 const PAGE_SIZES = [20, 50, 100];
 
-/** 上の見出しへ飛ぶための並び。左から順に並べる。 */
+/**
+ * 左の列の見出しへ飛ぶための並び。左から順に並べる。
+ * 「追加済み」はこの並び自身が入っているカードなので、行き先に入れない。
+ */
 const SECTIONS = [
   { id: "set-title", label: "タイトル" },
   { id: "set-tags", label: "タグ" },
   { id: "set-bands", label: "想定者" },
   { id: "set-search", label: "問題検索" },
-  { id: "set-added", label: "追加済み" },
 ] as const;
 
 export function SetEditorView({ setId }: { setId?: string }) {
@@ -619,7 +621,8 @@ export function SetEditorView({ setId }: { setId?: string }) {
           </dl>
 
           {/* 見出しへの近道。左の列を上下に往復せずに済むよう、常に見えるこのカードの中に置く。 */}
-          <nav className="section-jump" aria-label="このページの見出し">
+          <nav className="section-jump" aria-label="このページの項目">
+            <span className="section-jump-title">このページの項目</span>
             {SECTIONS.map((section) => (
               <a key={section.id} href={`#${section.id}`}>
                 {section.label}

@@ -6,6 +6,7 @@ import {
   type LibraryTab,
   type ProblemSet,
   type ProblemSetSummary,
+  type SetSolveStatusMap,
   type SolveStatus,
   type SolveStatusMap,
 } from "@custom-contest/contracts";
@@ -31,8 +32,11 @@ export type ProblemSetRepository = {
   toggleLike(setId: string): Promise<boolean>;
   toggleBookmark(setId: string): Promise<boolean>;
   markRecent(setId: string): Promise<void>;
-  solveStatuses(): Promise<SolveStatusMap>;
-  setSolveStatus(problemId: string, status: SolveStatus): Promise<SolveStatusMap>;
+  /** 1つのセットの中の挑戦状態。 */
+  solveStatuses(setId: string): Promise<SolveStatusMap>;
+  /** 全セットぶん。ライブラリが進み具合で分けるときに使う。 */
+  allSolveStatuses(): Promise<SetSolveStatusMap>;
+  setSolveStatus(setId: string, problemId: string, status: SolveStatus): Promise<SolveStatusMap>;
 };
 
 const STORAGE_KEY = "custom-contest:problem-sets:v1";
@@ -45,8 +49,8 @@ type StoredState = {
   likes: string[];
   bookmarks: string[];
   recent: string[];
-  /** problemId単位の挑戦状態。セットをまたいで1つの状態を共有する。 */
-  solveStatuses: SolveStatusMap;
+  /** setId単位の挑戦状態。記録はセットの中で閉じる。 */
+  solveStatuses: SetSolveStatusMap;
 };
 
 const EMPTY_STATE: StoredState = {
@@ -68,6 +72,19 @@ function normalizeStoredSet(set: ProblemSet): ProblemSet {
   return { ...set, targetBands: [] };
 }
 
+/**
+ * 挑戦状態を現在の形へ揃える。
+ * 以前は`problemId -> 状態`の1階層で、今は`setId -> problemId -> 状態`の2階層になっている。
+ * 古い形は値が文字列なので、それを見分けて捨てる。セットをまたいだ記録を
+ * どのセットのものと決めることはできないため、引き継がずに未着手から始める。
+ */
+function normalizeSolveStatuses(raw: unknown): SetSolveStatusMap {
+  if (!raw || typeof raw !== "object") return {};
+  const entries = Object.entries(raw as Record<string, unknown>);
+  if (entries.some(([, value]) => typeof value !== "object" || value === null)) return {};
+  return Object.fromEntries(entries as [string, SolveStatusMap][]);
+}
+
 function readState(): StoredState {
   if (typeof window === "undefined") return EMPTY_STATE;
   try {
@@ -80,8 +97,7 @@ function readState(): StoredState {
       likes: Array.isArray(parsed.likes) ? parsed.likes : [],
       bookmarks: Array.isArray(parsed.bookmarks) ? parsed.bookmarks : [],
       recent: Array.isArray(parsed.recent) ? parsed.recent : [],
-      solveStatuses:
-        parsed.solveStatuses && typeof parsed.solveStatuses === "object" ? parsed.solveStatuses : {},
+      solveStatuses: normalizeSolveStatuses(parsed.solveStatuses),
     };
   } catch {
     // 壊れた保存内容でも画面が開けるように、seedだけで続行する。
@@ -276,18 +292,26 @@ export const problemSetRepository: ProblemSetRepository = {
     writeState({ ...state, recent: [setId, ...state.recent.filter((id) => id !== setId)].slice(0, 12) });
   },
 
-  async solveStatuses() {
+  async solveStatuses(setId) {
+    return readState().solveStatuses[setId] ?? {};
+  },
+
+  async allSolveStatuses() {
     return readState().solveStatuses;
   },
 
-  async setSolveStatus(problemId, status) {
+  async setSolveStatus(setId, problemId, status) {
     const state = readState();
-    const next = { ...state.solveStatuses };
+    const inSet = { ...(state.solveStatuses[setId] ?? {}) };
     // 未ACは既定値なので、記録を残さず削除する。
-    if (status === "unsolved") delete next[problemId];
-    else next[problemId] = status;
+    if (status === "unsolved") delete inSet[problemId];
+    else inSet[problemId] = status;
+    const next = { ...state.solveStatuses };
+    // 1問も記録がなくなったセットは、keyごと落として保存内容を膨らませない。
+    if (Object.keys(inSet).length === 0) delete next[setId];
+    else next[setId] = inSet;
     writeState({ ...state, solveStatuses: next });
-    return next;
+    return inSet;
   },
 };
 

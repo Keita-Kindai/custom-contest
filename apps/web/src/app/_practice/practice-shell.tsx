@@ -39,9 +39,6 @@ export function PracticeShell({ current, children }: { current: NavKey; children
           ))}
         </nav>
         <ThemeSwitch />
-        <Link className="practice-battle-link" href="/">
-          対戦へ
-        </Link>
       </header>
       <main className="practice-main">{children}</main>
       <footer className="practice-footer">

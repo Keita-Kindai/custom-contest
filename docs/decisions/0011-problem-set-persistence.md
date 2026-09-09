@@ -56,13 +56,19 @@
 
 現在localStorageにあるのはデモ用のデータなので、アカウントへは移さない。DESIGN-090をこの内容で閉じる。
 
-### 4. カタログをDBへ入れる
+### 4. カタログをDBへ入れる。ただし検索はDBに当てない
 
 `problems` tableを作り、`packages/domain`が持つ固定JSON（3295問）から流し込む。セットは`problem_id`だけを参照する。
 
 いまはセットごとに問題名・Difficulty・出典を丸ごとコピーしている。この形だと、AtCoder側のDifficultyが更新されても、過去に作ったセットは古い値のままになる。参照にすれば1か所の更新が全セットへ届く（判断軸5）。
 
-3295行はNeonの0.5 GBに対して無視できる大きさで、検索をSQLで書けるようになる。
+**`/api/problems/search`はDBを叩かない。** 今と同じくメモリ上のJSONを引く。
+
+問題検索は入力のたびに走る（250msのdebounceつき）、このアプリで最も回数の多い処理である。これをPostgreSQLに当てると、誰かが問題を探しているあいだcomputeが起きたままになり、Neonの月100 CU-hoursを最も食う経路になる（ADR-0010）。カタログはdeployのあいだ変わらない固定データなので、DBを経由して得るものがない。
+
+`problems` tableが担うのは2つだけである。`problem_set_items.problem_id`の参照先になることと、セットを表示するときにJOINして現在の問題名・Difficultyを返すこと。
+
+同じデータが2か所にある形になるが、書き手は1つに限る。**流し込みscriptがdeployのたびに走り**、同じJSONからUPSERTする。人が忘れると外部キー違反で保存が失敗するので、手動実行にはしない。
 
 ### 5. タグと想定者は配列列で持つ
 
@@ -219,6 +225,8 @@ CREATE TABLE set_problem_status (
 | `solveStatuses(setId)` | `set_problem_status`を`(user_id, set_id)`で引く |
 | `setSolveStatus(...)` | `unsolved`ならDELETE、それ以外はUPSERT |
 
+`/api/problems/search`はこの表に入らない。`ProblemSetRepository`を通らず、DBも経由せず、`searchCatalog`が固定JSONを引く今の実装のままである。
+
 いいね数は`problem_set_likes`の`COUNT(*)`で出す。非正規化した列は置かない。件数がこの規模のうちはJOIN + GROUP BYで足り、数え直しのずれも起きない。
 
 ### 境界が1つ増える
@@ -233,7 +241,8 @@ CREATE TABLE set_problem_status (
 - `authorName`（`atcoderIdSchema`）は`display_name`（最大32文字）へ変わる。AtCoder IDの形式制約（半角英数と`_`、3〜16文字）はもう当てはまらない。
 - `fixtures.ts`のseedセットは、DB移行後は`problems`と`problem_sets`のseed SQLへ移すか、開発環境だけの初期データにする。
 - Difficultyを参照にした結果、セットの`difficultyRange`は保存値ではなくJOINの集計になる。カタログ更新のたびに変わる。
-- カタログのDifficultyを更新する手順が要る。今は固定JSONを差し替えてbuildし直すだけだが、DBへ入れると流し込みscript（`pnpm db:seed-problems`のようなもの）が要る。
+- カタログのDifficultyを更新する手順が要る。固定JSONを差し替えたあと、流し込みscript（`pnpm db:seed-problems`のようなもの）がdeployのたびに走り、差分をUPSERTする。JSONとDBの両方に同じデータが載るが、書き手はこのscript1つに限る。
+- 流し込みが失敗したままdeployが通ると、カタログにない`problem_id`を保存しようとして外部キー違反になる。deploy工程で流し込みの成否を確認する。
 - 未ログインではDiscoverの閲覧しかできない。「試しに1つ作ってみる」ができなくなる。
 - Neonのscale to zeroにより、5分以上空いたあとの最初の読み込みが数百ミリ秒遅れる（ADR-0010）。
 
@@ -257,6 +266,7 @@ CREATE TABLE set_problem_status (
 - AtCoder IDの所有確認を認証と結びつける。
 - 未ログインでもセットを作れるようにしたくなる。
 - Codeforcesの問題をカタログへ入れる（DESIGN-099。`problem_id`の名前空間が衝突する）。
+- 問題検索に、固定JSONでは書けない条件（作成者の絞り込み、全文検索）が要るようになる。そのとき検索をDBへ移す判断をし直す。
 
 ## Evidence
 

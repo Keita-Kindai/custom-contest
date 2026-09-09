@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { auth, signOut } from "@/auth";
+
 import { ThemeSwitch } from "./components/theme-switch";
 import "./practice.css";
 
@@ -17,8 +19,20 @@ const NAV: { key: NavKey; href: string; label: string }[] = [
  * `data-skin="practice"`がtokens.cssのlight skinを有効にする。
  * ダークは`<html>`の`data-practice-theme`で上書きする（13章・14章）。
  * その属性を初回描画前に書くbootstrapスクリプトはroot layoutにある。
+ *
+ * sessionを読むため、このshellを使う画面はすべてrequestごとの描画になる。
+ * ログイン状態は人によって違うので、静的に配れない。
  */
-export function PracticeShell({ current, children }: { current: NavKey; children: ReactNode }) {
+export async function PracticeShell({
+  current,
+  children,
+}: {
+  /** どのnavを現在地として示すか。どれでもない画面（設定、ログイン）では省く。 */
+  current?: NavKey;
+  children: ReactNode;
+}) {
+  const session = await auth();
+
   return (
     <div className="practice-shell" data-skin="practice">
       <header className="practice-header">
@@ -39,6 +53,30 @@ export function PracticeShell({ current, children }: { current: NavKey; children
           ))}
         </nav>
         <ThemeSwitch />
+
+        <div className="practice-account">
+          {session?.user ? (
+            <>
+              <Link className="practice-account-name" href="/settings">
+                {session.user.name ?? "アカウント"}
+              </Link>
+              <form
+                action={async () => {
+                  "use server";
+                  await signOut({ redirectTo: "/discover" });
+                }}
+              >
+                <button className="practice-account-button" type="submit">
+                  ログアウト
+                </button>
+              </form>
+            </>
+          ) : (
+            <Link className="practice-account-button" href="/signin">
+              ログイン
+            </Link>
+          )}
+        </div>
       </header>
       <main className="practice-main">{children}</main>
       <footer className="practice-footer">

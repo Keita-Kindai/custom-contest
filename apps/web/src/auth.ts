@@ -1,10 +1,20 @@
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import { eq } from "drizzle-orm";
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
 import { getDb } from "@/server/db/client";
 import { accounts, sessions, users, verificationTokens } from "@/server/db/auth-schema";
+
+/**
+ * 画面に出す名前を決める（ADR-0011）。
+ * OAuthの表示名をそのまま写すが、providerによってはnullで返るため、その場合はIDから作る。
+ */
+function initialDisplayName(name: string | null | undefined, userId: string): string {
+  const trimmed = name?.trim() ?? "";
+  return trimmed ? trimmed.slice(0, 32) : `user_${userId.slice(0, 6)}`;
+}
 
 /**
  * 認証（ADR-0009）。
@@ -65,8 +75,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: { signIn: "/signin" },
   callbacks: {
     session({ session, user }) {
-      if (user) session.user.id = user.id;
+      if (!user) return session;
+      session.user.id = user.id;
+      // 画面に出すのは display_name。OAuthの表示名（users.name）は変更の初期値としてだけ使う。
+      const displayName = (user as { displayName?: string | null }).displayName;
+      if (displayName) session.user.name = displayName;
       return session;
+    },
+  },
+  events: {
+    /**
+     * 初回ログインでusers行ができた直後に、画面に出す名前を埋める。
+     * DrizzleAdapterはOAuthのprofileが持つ列しか書かないので、display_nameはここで入れる。
+     */
+    async createUser({ user }) {
+      if (!db || !user.id) return;
+      await db
+        .update(users)
+        .set({ displayName: initialDisplayName(user.name, user.id) })
+        .where(eq(users.id, user.id));
     },
   },
 });

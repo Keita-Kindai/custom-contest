@@ -26,7 +26,6 @@ export const seedProblemSets: ProblemSet[] = [
     status: "published",
     authorName: "kenta_ac",
     likeCount: 87,
-    useCount: 312,
     createdAt: daysAgo(23),
     updatedAt: daysAgo(3),
     problems: [
@@ -48,7 +47,6 @@ export const seedProblemSets: ProblemSet[] = [
     status: "published",
     authorName: "sora__",
     likeCount: 61,
-    useCount: 184,
     createdAt: daysAgo(26),
     updatedAt: daysAgo(6),
     problems: [
@@ -70,7 +68,6 @@ export const seedProblemSets: ProblemSet[] = [
     status: "published",
     authorName: "mio_p",
     likeCount: 342,
-    useCount: 1204,
     createdAt: daysAgo(21),
     updatedAt: daysAgo(1),
     problems: [
@@ -96,7 +93,6 @@ export const seedProblemSets: ProblemSet[] = [
     status: "published",
     authorName: "mio_p",
     likeCount: 15,
-    useCount: 63,
     createdAt: daysAgo(22),
     updatedAt: daysAgo(2),
     problems: [
@@ -118,7 +114,6 @@ export const seedProblemSets: ProblemSet[] = [
     status: "published",
     authorName: "tk_algo",
     likeCount: 4,
-    useCount: 19,
     createdAt: daysAgo(20),
     updatedAt: daysAgo(0),
     problems: [
@@ -141,7 +136,6 @@ export const seedProblemSets: ProblemSet[] = [
     status: "published",
     authorName: "tk_algo",
     likeCount: 55,
-    useCount: 210,
     createdAt: daysAgo(29),
     updatedAt: daysAgo(9),
     problems: [
@@ -162,7 +156,6 @@ export const seedProblemSets: ProblemSet[] = [
     status: "published",
     authorName: "tk_algo",
     likeCount: 2,
-    useCount: 11,
     createdAt: daysAgo(32),
     updatedAt: daysAgo(12),
     problems: [
@@ -182,7 +175,6 @@ export const seedProblemSets: ProblemSet[] = [
     status: "draft",
     authorName: "Litms",
     likeCount: 0,
-    useCount: 0,
     createdAt: daysAgo(20),
     updatedAt: daysAgo(0),
     problems: [

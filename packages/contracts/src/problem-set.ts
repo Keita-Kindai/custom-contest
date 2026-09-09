@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { atcoderIdSchema, timestampSchema } from "./common";
+import { displayNameSchema, timestampSchema } from "./common";
 
 /**
  * 問題セット（精進）側の契約。
@@ -89,10 +89,12 @@ export const problemSetSchema = z.object({
    * 問題から計算するDifficultyとは別で、作成者の意図を表す。
    */
   targetBands: z.array(bandKeySchema).max(8).default([]),
-  /** 認証がないため暫定値。DBと認証の導入まで実データにならない。 */
-  authorName: atcoderIdSchema,
+  /**
+   * 作成者の表示名（`users.display_name`）。認証がないあいだは暫定値。
+   * AtCoder IDではない。AtCoder IDは自己申告の別項目として持ち、作成者名には使わない。
+   */
+  authorName: displayNameSchema,
   likeCount: z.number().int().nonnegative(),
-  useCount: z.number().int().nonnegative(),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
 });
@@ -123,14 +125,19 @@ export const problemSetSummarySchema = problemSetSchema
   });
 export type ProblemSetSummary = z.infer<typeof problemSetSummarySchema>;
 
-/** Discoverの並び替え。 */
-export const problemSetSortSchema = z.enum(["popular", "new", "liked"]);
+/**
+ * Discoverの並び替え。
+ *
+ * 「人気順」はいいね数で並べる。以前は使用回数を第1keyにしていたが、
+ * 何を数えた値なのか説明できないため廃止した。その結果「いいね順」は人気順と
+ * 同じ並びになったので、選択肢から外してある。
+ */
+export const problemSetSortSchema = z.enum(["popular", "new"]);
 export type ProblemSetSort = z.infer<typeof problemSetSortSchema>;
 
 export const PROBLEM_SET_SORT_LABEL: Record<ProblemSetSort, string> = {
   popular: "人気順",
   new: "新着順",
-  liked: "いいね順",
 };
 
 export const discoverQuerySchema = z.object({

@@ -21,7 +21,12 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { withTimezone: true }),
   image: text("image"),
   /**
-   * 本人の自己申告のAtCoder ID。認証には使わない。
+   * 画面に出る名前（ADR-0011）。初回ログイン時に`name`（OAuthの表示名）から写し、
+   * あとから設定で変更できる。カードの作成者名はこの列を出す。
+   */
+  displayName: varchar("display_name", { length: 32 }),
+  /**
+   * 本人の自己申告のAtCoder ID。認証には使わない。作成者名にも使わない。
    * 提出がその人のものだという確認はuserscriptが行うのであって、この列は行わない。
    */
   atcoderId: varchar("atcoder_id", { length: 16 }),

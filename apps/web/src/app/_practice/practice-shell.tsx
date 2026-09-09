@@ -1,13 +1,24 @@
+/**
+ * ヘッダーおよびフッターを管理するtsxファイル。
+ * 今回ここでブラウザ側で環rejctするものはないのでサーバーサイドで管理するtsxファイル
+ */
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { auth, signOut } from "@/auth";
+import { auth } from "@/auth";
 
-import { ThemeSwitch } from "./components/theme-switch";
+import { AccountMenu } from "./components/account-menu";
+import { ThemeMenu } from "./components/theme-menu";
 import "./practice.css";
 
+// 現状、ページにあるセクションは以下の通り
+// discover: 主に問題セットを探すときに扱うページ。人気のやつとか、検索で見つける感じの場所
+// create  : 問題セットを自分で作成するページ
+// library : 自分が作成した問題リストや、いいねした問題リスト、保存した問題リストを閲覧することができる場所
 type NavKey = "discover" | "create" | "library";
 
+//  上記のページのリンクとラベルを作成したもの
+//  あとで中でmapを使ってnavigatorを作成する
 const NAV: { key: NavKey; href: string; label: string }[] = [
   { key: "discover", href: "/discover", label: "Discover" },
   { key: "create", href: "/sets/new", label: "作る" },
@@ -15,24 +26,20 @@ const NAV: { key: NavKey; href: string; label: string }[] = [
 ];
 
 /**
- * 精進側のshell。対戦側の`AppShell`とは別物で、1024px gateを持たない。
- * `data-skin="practice"`がtokens.cssのlight skinを有効にする。
- * ダークは`<html>`の`data-practice-theme`で上書きする（13章・14章）。
- * その属性を初回描画前に書くbootstrapスクリプトはroot layoutにある。
+ * shellの骨組み。ヘッダー右端だけを差し替えられるようにしてある。
  *
- * sessionを読むため、このshellを使う画面はすべてrequestごとの描画になる。
- * ログイン状態は人によって違うので、静的に配れない。
+ * 本物のshellはsessionを待つが、`loading.tsx`のスケルトンは待てない。
+ * ここを共通にしておくと、読み込み中と読み込み後で見出しやnavの位置がずれない。
  */
-export async function PracticeShell({
+function PracticeShellFrame({
   current,
+  headerEnd, // ヘッダーエンドはログイン、もしくはログアウトを表示するコンポーネントが入っている
   children,
 }: {
-  /** どのnavを現在地として示すか。どれでもない画面（設定、ログイン）では省く。 */
   current?: NavKey;
+  headerEnd: ReactNode;
   children: ReactNode;
 }) {
-  const session = await auth();
-
   return (
     <div className="practice-shell" data-skin="practice">
       <header className="practice-header">
@@ -52,38 +59,84 @@ export async function PracticeShell({
             </Link>
           ))}
         </nav>
-        <ThemeSwitch />
+        <div className="practice-header-end">{headerEnd}</div>
+      </header>
+      <main className="practice-main">{children}</main>
+      {/* <footer className="practice-footer">
+        <p>
+          作成した問題セットはアカウントに保存されます。ログインすれば別の端末からも開けます。
+        </p>
+      </footer> */}
+    </div>
+  );
+}
 
-        <div className="practice-account">
+/**
+ * 精進側のshell。対戦側の`AppShell`とは別物で、1024px gateを持たない。
+ * `data-skin="practice"`がtokens.cssのlight skinを有効にする。
+ * ダークは`<html>`の`data-practice-theme`で上書きする（13章・14章）。
+ * その属性を初回描画前に書くbootstrapスクリプトはroot layoutにある。
+ *
+ * sessionを読むため、このshellを使う画面はすべてrequestごとの描画になる。
+ * ログイン状態は人によって違うので、静的に配れない。
+ */
+export async function PracticeShell({
+  current,
+  children,
+}: {
+  /** どのnavを現在地として示すか。どれでもない画面（設定、ログイン）では省く。 */
+  current?: NavKey;
+  children: ReactNode;
+}) {
+
+  // 現在のセッション情報を受け取って、ログインしているかどうかを検証する
+  const session = await auth();
+
+  return (
+    <PracticeShellFrame
+      current={current}
+      headerEnd={
+        <>
+          <ThemeMenu />
           {session?.user ? (
-            <>
-              <Link className="practice-account-name" href="/settings">
-                {session.user.name ?? "アカウント"}
-              </Link>
-              <form
-                action={async () => {
-                  "use server";
-                  await signOut({ redirectTo: "/discover" });
-                }}
-              >
-                <button className="practice-account-button" type="submit">
-                  ログアウト
-                </button>
-              </form>
-            </>
+            <AccountMenu name={session.user.name ?? "アカウント"} />
           ) : (
             <Link className="practice-account-button" href="/signin">
               ログイン
             </Link>
           )}
-        </div>
-      </header>
-      <main className="practice-main">{children}</main>
-      <footer className="practice-footer">
-        <p>
-          作成した問題セットはアカウントに保存されます。ログインすれば別の端末からも開けます。
-        </p>
-      </footer>
-    </div>
+        </>
+      }
+    >
+      {children}
+    </PracticeShellFrame>
+  );
+}
+
+/**
+ * `loading.tsx`が出すshell。sessionを待たないので、アカウント欄は形だけ置く。
+ *
+ * テーマのメニューはここでも本物を出す。`<html>`のdata属性から現在値を読むだけで、
+ * sessionにもfetchにも依存しないため、読み込み中でも押せて構わない。
+ */
+export function PracticeShellSkeleton({
+  current,
+  children,
+}: {
+  current?: NavKey;
+  children: ReactNode;
+}) {
+  return (
+    <PracticeShellFrame
+      current={current}
+      headerEnd={
+        <>
+          <ThemeMenu />
+          <span className="skeleton header-menu-placeholder" aria-hidden="true" />
+        </>
+      }
+    >
+      {children}
+    </PracticeShellFrame>
   );
 }

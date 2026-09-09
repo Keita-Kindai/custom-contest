@@ -211,7 +211,7 @@ export function difficultyRangeOf(
 /**
  * AtCoderのrating色そのままの8段（2026-09-06のADR-0007追記）。
  * 以前は橙をbrand accentと分けるために6段へ丸め、2000以上を「紫」にしていたが、
- * AtCoderに紫という段は無く、利用者が読み違える。橙は塗りつぶさず枠線のchipで描く。
+ * AtCoderに紫という段は無く、利用者が読み違える。橙は塗りつぶさず枠線のchipで描く。 <- ねえよ
  *
  * 同じ段を、問題のDifficultyと「想定者（対象のrating色）」の両方に使う。
  */

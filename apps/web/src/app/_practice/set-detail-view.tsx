@@ -21,6 +21,7 @@ import {
   TagPill,
   TargetBandDots,
 } from "./components/atoms";
+import { SetDetailSkeleton } from "./components/skeletons";
 import { problemSetRepository, type ViewerState } from "./data/repository";
 import { usePracticeData } from "./use-practice-data";
 
@@ -51,7 +52,7 @@ export function SetDetailView({ setId }: { setId: string }) {
     void problemSetRepository.setSolveStatus(setId, problemId, next).then(setSolveStatuses);
   }
 
-  if (loading) return <p className="practice-loading">読み込み中…</p>;
+  if (loading) return <SetDetailSkeleton />;
   if (!data) {
     return (
       <EmptyState

@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * 問題作成（or 編集）をする画面
+ * 入力を保持したり、選択したものを保持したりで、ブラウザに情報を持たせたいからuse clientを使用
+ */
+
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -27,9 +32,14 @@ import {
   TagPill,
   TargetBandDots,
 } from "./components/atoms";
+import { PracticeBlocksSkeleton } from "./components/skeletons";
 import { ApiError, newProblemSetId, problemSetRepository } from "./data/repository";
 
-/** Diff帯のプリセット。検索の絞り込みに使う。 */
+/** Diff帯のプリセット。検索の絞り込みに使う。 
+ * DIFFICULTY_BANDSは @/packages/contracts/src/problem-set.tsにあるもの
+ * シンプルに灰色は0~399、茶色は400~799とまとまったファイルのことを指す
+ * ここでminとmaxは0以下であるのであればnullとし、赤以上のdiffは無限とする（それ以上何もないため）
+*/
 const DIFFICULTY_BANDS_FILTER: { label: string; min: number | null; max: number | null }[] = [
   { label: "Diff 帯", min: null, max: null },
   ...DIFFICULTY_BANDS.map((band, index) => ({
@@ -248,7 +258,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
     }
   }
 
-  if (!loaded) return <p className="practice-loading">読み込み中…</p>;
+  if (!loaded) return <PracticeBlocksSkeleton blocks={2} label="問題セットを読み込んでいます" />;
 
   const range = difficultyRangeOf(problems);
   const added = new Set(problems.map((problem) => problem.problemId));

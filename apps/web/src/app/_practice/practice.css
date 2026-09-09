@@ -110,24 +110,12 @@
 
 /* --- account ------------------------------------------------------------ */
 
-.practice-account {
+/* ヘッダー右端。表示テーマとアカウントの2つのメニューバーだけを置く。 */
+.practice-header-end {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-}
-
-.practice-account-name {
-  max-width: 14ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-ink);
-}
-
-.practice-account-name:hover {
-  color: var(--color-accent-strong);
+  gap: var(--space-2);
+  margin-left: auto;
 }
 
 .practice-account-button {
@@ -270,6 +258,18 @@
 .practice-button.is-danger {
   border-color: var(--color-danger);
   color: var(--color-danger);
+}
+
+/* 取り消せない操作の確定だけを塗りつぶす。キャンセルとの差を色と面で付ける。 */
+.practice-button.is-danger-solid {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+  color: var(--color-danger-ink);
+}
+
+.practice-button.is-danger-solid:hover:not(:disabled) {
+  background: var(--color-danger);
+  filter: brightness(1.08);
 }
 
 /* --- tags / difficulty --------------------------------------------------- */
@@ -1152,6 +1152,57 @@
   color: var(--color-faint);
 }
 
+/* --- 読み込み中の骨組み --------------------------------------------------- */
+
+/*
+ * 灰色の箱。面の色より一段濃いだけにし、明滅は薄く短くする。
+ * 強く光らせると、読み込みが終わる前に中身があるように見えてしまう。
+ */
+.skeleton {
+  border-radius: var(--radius-control);
+  background: var(--color-surface-2);
+  animation: skeleton-pulse 1.4s var(--ease-in-out) infinite;
+}
+
+.skeleton-bar {
+  display: block;
+  flex: none;
+  border-radius: var(--radius-control);
+}
+
+.skeleton-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* 骨組みのカードは押せないので、実物のhoverと影を持たせない。 */
+.set-card.is-skeleton,
+.problem-list-row.is-skeleton {
+  pointer-events: none;
+}
+
+.problem-list-row.is-skeleton {
+  align-items: center;
+}
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
 @media (max-width: 1023px) {
   .set-detail,
   .create-layout {
@@ -1265,39 +1316,154 @@
   cursor: pointer;
 }
 
-/* --- 表示テーマの切り替え ------------------------------------------------ */
+/* --- ヘッダーのメニューバー ---------------------------------------------- */
 
-.theme-switch {
-  display: flex;
-  margin-left: auto;
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-pill);
-  overflow: hidden;
+/*
+ * 表示テーマとアカウントで同じ形を使う。トリガーは`.practice-nav-link`と同じ高さにし、
+ * 押していないあいだは枠を持たない。開くと面の色が変わる。
+ */
+.header-menu {
+  position: relative;
 }
 
-.theme-switch-option {
-  padding: 4px var(--space-3);
-  border: none;
+.header-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
   background: none;
-  font: inherit;
-  font-size: 12px;
-  color: var(--color-muted);
+  color: var(--color-ink);
+  font: 700 13px/1.4 var(--font-body);
+  white-space: nowrap;
   cursor: pointer;
+}
+
+.header-menu-trigger:hover {
+  background: var(--color-surface-2);
+}
+
+.header-menu-trigger.is-open {
+  border-color: var(--color-rule);
+  background: var(--color-surface-2);
+}
+
+/* 長い表示名でもnavを押し出さない。省略はこの1か所だけで起きる。 */
+.header-menu-label {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.theme-switch-option + .theme-switch-option {
-  border-left: 1px solid var(--color-rule);
+.header-menu-caret {
+  color: var(--color-faint);
+  font-size: 10px;
 }
 
-.theme-switch-option:hover {
-  background: var(--color-surface-2);
+.header-menu-popup {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  z-index: var(--z-raised);
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-0);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.16);
+}
+
+.header-menu-popup.is-end {
+  right: 0;
+}
+
+.header-menu-popup.is-start {
+  left: 0;
+}
+
+.header-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  border: none;
+  border-radius: var(--radius-control);
+  background: none;
   color: var(--color-ink);
+  font: 500 13px/1.4 var(--font-body);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
-.theme-switch-option.is-current {
+.header-menu-item:hover {
+  background: var(--color-surface-2);
+}
+
+.header-menu-item.is-current {
   background: var(--color-accent);
   color: var(--color-accent-ink);
+  font-weight: 700;
+}
+
+.header-menu-item.is-danger {
+  color: var(--color-danger);
+}
+
+.header-menu-item.is-danger:hover {
+  background: var(--color-danger-soft);
+}
+
+/* テーマの現在値と各項目に出す色見本。テーマに関係なく、その案の面の色で描く。 */
+.theme-swatch {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 50%;
+}
+
+.theme-swatch.is-light {
+  background: oklch(100% 0 0);
+}
+
+.theme-swatch.is-charcoal {
+  background: oklch(24% 0.012 60);
+}
+
+.theme-swatch.is-soft {
+  background: oklch(33% 0.04 258);
+}
+
+/* 選択中の項目では枠が背景に埋もれるので、accentの上でも見える色にする。 */
+.header-menu-item.is-current .theme-swatch {
+  border-color: var(--color-accent-ink);
+}
+
+.account-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* sessionを待つあいだのアカウント欄。開いたあとのボタンと同じ幅を先に取る。 */
+.header-menu-placeholder {
+  display: inline-block;
+  width: 108px;
+  height: 32px;
+  border-radius: var(--radius-control);
 }
 
 .band-picker {
@@ -1441,7 +1607,7 @@
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1461,6 +1627,21 @@
   border-radius: var(--radius-card);
   background: var(--color-surface-0);
   box-shadow: 0 24px 48px rgb(0 0 0 / 0.18);
+}
+
+/* 確認だけのモーダル。中身が短いので幅を詰め、行間を空ける。 */
+.modal-card.is-compact {
+  width: min(420px, 100%);
+  gap: var(--space-4);
+}
+
+.modal-card.is-compact .modal-lead {
+  line-height: 1.8;
+}
+
+.modal-card.is-compact .modal-actions {
+  border-top: none;
+  padding-top: 0;
 }
 
 .modal-title {

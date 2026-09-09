@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Custom Contest 公開前監査 — 2026-09-09</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f5f2eb;
+      --panel: #fffdfa;
+      --ink: #17211d;
+      --muted: #62706a;
+      --line: #d8ddd8;
+      --accent: #145c42;
+      --accent-soft: #dfeee7;
+      --danger: #a83232;
+      --danger-soft: #f8e3df;
+      --warn: #8b5b08;
+      --warn-soft: #f8edcf;
+      --good: #1f6b49;
+      --good-soft: #e2f0e8;
+      --shadow: 0 18px 45px rgba(23, 33, 29, .08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 0%, rgba(20, 92, 66, .10), transparent 28rem),
+        var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.7;
+    }
+    a { color: var(--accent); text-underline-offset: .18em; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; }
+    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    header { padding: 64px 0 28px; }
+    .eyebrow { margin: 0 0 10px; color: var(--accent); font-size: .78rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { max-width: 850px; margin: 0; font-size: clamp(2.1rem, 6vw, 4.8rem); line-height: 1.02; letter-spacing: -.055em; }
+    .lede { max-width: 780px; margin: 20px 0 0; color: var(--muted); font-size: 1.08rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 22px; color: var(--muted); font-size: .88rem; }
+    .verdict {
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      gap: 26px;
+      align-items: center;
+      margin: 26px 0 38px;
+      padding: 30px;
+      border: 1px solid #e7c2ba;
+      border-radius: 22px;
+      background: linear-gradient(135deg, #fffdfa, var(--danger-soft));
+      box-shadow: var(--shadow);
+    }
+    .stamp { color: var(--danger); font-weight: 900; font-size: 2.4rem; line-height: 1; letter-spacing: -.05em; }
+    .stamp small { display: block; margin-top: 9px; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; }
+    .verdict h2 { margin: 0 0 8px; font-size: 1.42rem; }
+    .verdict p { margin: 0; }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      margin-bottom: 30px;
+      padding: 12px 0;
+      border-block: 1px solid rgba(216, 221, 216, .8);
+      background: rgba(245, 242, 235, .92);
+      backdrop-filter: blur(14px);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    nav .shell { display: flex; gap: 20px; }
+    nav a { color: var(--muted); font-size: .86rem; font-weight: 700; text-decoration: none; }
+    main { padding-bottom: 70px; }
+    section { margin: 0 0 50px; scroll-margin-top: 72px; }
+    h2 { margin: 0 0 18px; font-size: 1.75rem; letter-spacing: -.025em; }
+    h3 { margin: 0 0 6px; font-size: 1.05rem; }
+    p { margin: 0 0 12px; }
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+    .card { grid-column: span 6; padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+    .card.full { grid-column: 1 / -1; }
+    .card.danger { border-color: #e7c2ba; background: var(--danger-soft); }
+    .card.warn { border-color: #ead39a; background: var(--warn-soft); }
+    .card.good { border-color: #bdd9cb; background: var(--good-soft); }
+    .tag { display: inline-flex; align-items: center; min-height: 25px; margin-bottom: 12px; padding: 2px 9px; border-radius: 999px; font-size: .72rem; font-weight: 850; letter-spacing: .05em; }
+    .tag.stop { color: #7d1f1f; background: #f4cfc8; }
+    .tag.before { color: #704600; background: #f0d890; }
+    .tag.later { color: #28553f; background: #cfe3d8; }
+    ul, ol { margin: 10px 0 0; padding-left: 1.25rem; }
+    li + li { margin-top: 7px; }
+    .evidence { margin-top: 13px; padding-top: 12px; border-top: 1px solid rgba(98,112,106,.2); color: var(--muted); font-size: .85rem; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; }
+    th, td { padding: 14px 16px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); background: #f3f5f1; font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    .status { font-weight: 850; }
+    .status.no { color: var(--danger); }
+    .status.conditional { color: var(--warn); }
+    .status.yes { color: var(--good); }
+    details { border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+    details + details { margin-top: 10px; }
+    summary { cursor: pointer; padding: 15px 18px; font-weight: 800; }
+    details > div { padding: 0 18px 18px; color: var(--muted); }
+    .checklist { counter-reset: launch; display: grid; gap: 12px; }
+    .check {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 12px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+    }
+    .check::before { counter-increment: launch; content: counter(launch); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: white; background: var(--accent); font-size: .82rem; font-weight: 900; }
+    .check p { color: var(--muted); margin: 4px 0 0; }
+    .callout { padding: 18px 20px; border-left: 4px solid var(--accent); border-radius: 0 10px 10px 0; background: var(--accent-soft); }
+    .source-list { columns: 2; column-gap: 34px; }
+    .source-list li { break-inside: avoid; margin-bottom: 10px; }
+    footer { padding: 24px 0 55px; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+    @media (max-width: 780px) {
+      .shell { width: min(100% - 22px, 1180px); }
+      header { padding-top: 38px; }
+      .verdict { grid-template-columns: 1fr; }
+      .card { grid-column: 1 / -1; }
+      .source-list { columns: 1; }
+    }
+    @media print {
+      body { background: white; font-size: 10pt; }
+      nav { display: none; }
+      .shell { width: 100%; }
+      header { padding-top: 0; }
+      .verdict, .card, .table-wrap, details { box-shadow: none; break-inside: avoid; }
+      section { break-inside: auto; }
+      a { color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <header class="shell">
+    <p class="eyebrow">Deployment readiness review · 2026-09-09</p>
+    <h1>Custom Contest<br>公開前監査</h1>
+    <p class="lede">設計、ADR、実装、データベース、外部サービス、公開時の法務・運用を照合した結果。法律相談の代替ではなく、公開判断のための技術・規約リスク調査である。</p>
+    <div class="meta">
+      <span>基準コミット: <code>a0ebd12</code></span>
+      <span>想定: 日本から無料で一般公開</span>
+      <span>公開候補: Vercel + Neon</span>
+      <span>監査日: 2026-09-09 JST</span>
+      <span>同時進行の未コミットUI変更は監査対象外</span>
+    </div>
+    <div class="verdict">
+      <div class="stamp">NO-GO<small>for public launch today</small></div>
+      <div>
+        <h2>現状のまま、不特定多数へ本番公開する判断はできない</h2>
+        <p>ビルドは成功するが、利用目的・運営者・削除窓口を示す文書がなく、未公開のAC Duel APIも外部から利用可能で、問題セット保存には所有権をすり抜ける競合がある。これらは「後で直せばよい見た目」ではなく、公開前に閉じる項目である。</p>
+      </div>
+    </div>
+  </header>
+
+  <nav aria-label="目次"><div class="shell">
+    <a href="#decision">公開判定</a><a href="#blockers">停止条件</a><a href="#data">データ</a><a href="#database">DB</a><a href="#external">外部サービス</a><a href="#legal">法務</a><a href="#runbook">当日手順</a><a href="#evidence">検証</a><a href="#sources">情報源</a>
+  </div></nav>
+
+  <main class="shell">
+    <section id="decision">
+      <h2>公開範囲ごとの判定</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>公開形態</th><th>判定</th><th>理由</th><th>最短の成立条件</th></tr></thead>
+        <tbody>
+          <tr><td>開発者だけのローカル利用</td><td class="status yes">継続可</td><td>現在のデモ境界。第三者への提供ではない。</td><td>Fake evidenceと開発用secretを本番へ持ち込まない。</td></tr>
+          <tr><td>URLを知る友人だけの期限付きプレビュー</td><td class="status conditional">条件付き可</td><td>法的義務が消えるわけではないが、影響範囲を限定できる。</td><td>Vercel Deployment Protection等でアクセス制限し、精進側だけを有効化。データ取扱説明と連絡先を先に示す。</td></tr>
+          <tr><td>精進側（問題セット）の一般公開</td><td class="status no">現状不可</td><td>個人データ・公開投稿を扱うのにプライバシー表示、規約、削除・通報窓口がない。保存APIの認可競合と濫用対策も未解決。</td><td>下記P0を修正し、DBを含む本番相当テストと運用手順を完了。</td></tr>
+          <tr><td>AC Duel / userscriptの一般公開</td><td class="status no">保留</td><td>ADR自身が公開・多人数版を保留。AtCoderの非公開API相当の画面取得について許可・上限が確認できず、poll停止と多重tab制御にも不備がある。</td><td>AtCoderへ具体的な利用方法を問い合わせ、回答に沿って実装。Room stateもVercelの複数instanceへ対応。</td></tr>
+          <tr><td>課金・広告・企業イベント・採用利用</td><td class="status no">対象外</td><td>Vercel Hobbyの非商用条件と、AtCoderの企業・団体向け禁止事項に触れる。</td><td>有料hostingへ変更し、契約・表示・特商法等を別途レビュー。AtCoderの許諾を得る。</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="blockers">
+      <h2>一般公開前に止める項目</h2>
+      <div class="grid">
+        <article class="card danger">
+          <span class="tag stop">P0 · 法務 / 契約</span>
+          <h3>プライバシー説明、利用規約、運営者連絡先がない</h3>
+          <p>OAuthでは氏名、メール、画像、provider ID、token、sessionを保存する。問題セット、閲覧、いいね、進捗もアカウントへ結び付く。個人情報保護法上の利用目的の通知・公表等に対応する表示がなく、Google OAuthの公開ポリシーが求めるホームページ上のプライバシーポリシー・利用規約リンクも満たさない。</p>
+          <p><strong>完了条件:</strong> 取得項目、目的、保存期間、Vercel/Neon/OAuth providerへの委託、国外取扱い、安全管理、開示・訂正・削除、問い合わせ先、改定日を公開。利用規約には投稿権利、禁止内容、削除、免責、停止、準拠法を記載する。</p>
+          <div class="evidence">リポジトリ内に privacy / terms / legal 文書・画面なし。<code>auth-schema.ts:17–69</code></div>
+        </article>
+
+        <article class="card danger">
+          <span class="tag stop">P0 · 認可</span>
+          <h3>同時作成で他ユーザーのセットを上書きできる</h3>
+          <p>Routeは先に <code>ownerOf(setId)</code> を読み、存在しなければ新規作成として通す。その後の <code>INSERT ... ON CONFLICT DO UPDATE</code> はowner条件なしで同じIDを更新する。2アカウントが同じ未使用IDへ同時PUTすると、両方の所有者確認がnullになり、後着が先着所有の内容を更新できる。</p>
+          <p><strong>完了条件:</strong> 作成は衝突時409、更新は <code>WHERE owner_id = session user</code> をDB内で原子的に保証する。1 transaction内の行lockまたは条件付きUPDATEを使い、競合テストを追加する。</p>
+          <div class="evidence"><code>api/problem-sets/[setId]/route.ts:60</code>、<code>server/problem-sets/queries.ts:270–300</code></div>
+        </article>
+
+        <article class="card danger">
+          <span class="tag stop">P0 · 公開範囲</span>
+          <h3>AC Duelは画面だけ隠れ、APIは本番成果物に残る</h3>
+          <p><code>/battle/*</code> は307でDiscoverへ転送されるが、<code>/api/rooms</code>、<code>/api/userscript/*</code>、<code>/api/matches/*</code> はビルドされ、Room作成はログイン不要である。Vercelではprocess内Roomがinstance間で共有されず、機能不全とメモリ・DB濫用の入口になる。</p>
+          <p><strong>完了条件:</strong> productionの機能flagをserver側で全Battle APIへ適用して404/503にし、userscriptを配布しない。Fake evidence環境変数は未設定にする。公開後に有効化する場合は別ADRと負荷・外部規約レビューを通す。</p>
+          <div class="evidence"><code>next.config.ts:17–22</code>、production buildのRoute一覧、<code>api/rooms/route.ts:9</code></div>
+        </article>
+
+        <article class="card danger">
+          <span class="tag stop">P0 · 外部規約</span>
+          <h3>AtCoder Problems APIのアクセス間隔に反する</h3>
+          <p>週次カタログ生成が3 endpointを <code>Promise.all</code> で同時取得する。公式API文書はリクエスト間に1秒より長い間隔を求める。週1回でも、明示ルールから外れる実装は公開前に直すべきである。</p>
+          <p><strong>完了条件:</strong> 3取得を逐次化し、間に1.1秒以上置く。失敗時backoffとテストを追加し、外部サービス台帳を現実装へ合わせる。</p>
+          <div class="evidence"><code>scripts/generate-problem-catalog.mjs:20–24</code>、AtCoder Problems API documentation</div>
+        </article>
+
+        <article class="card warn">
+          <span class="tag before">P1 · 濫用 / 費用</span>
+          <h3>公開APIにrate limitと投稿通報経路がない</h3>
+          <p>検索、Discover、OAuth、いいね、保存、閲覧記録、セット作成にアプリ側の制限がない。VercelのDDoS緩和だけでは、正規形式の大量requestによるNeon CU消費、行増加、OAuth濫用、スパム投稿を管理できない。</p>
+          <p><strong>完了条件:</strong> IP/session単位の制限、1ユーザーあたりセット数、一覧pagination、異常時のkill switch、通報・非公開化・削除手順、usage alertを用意する。</p>
+          <div class="evidence">Route全体にrate limit実装なし。<code>discover()</code> は全該当行を上限なしで返す。</div>
+        </article>
+
+        <article class="card warn">
+          <span class="tag before">P1 · 検証</span>
+          <h3>DBを使う11テストが通常checkではskipされる</h3>
+          <p><code>pnpm check</code> は成功したが、DATABASE_URLがテストprocessへ渡らず、DB integration test 11件はskipされた。今回の中心機能である永続化・公開範囲・cascadeを公開判定としては検証できていない。</p>
+          <p><strong>完了条件:</strong> 使い捨てPostgreSQLへ0001〜0004を適用し、seed、integration test、GitHub/Google sign-in/out、別アカウントのprivate/unlistedアクセス、退会削除を確認する。</p>
+          <div class="evidence">2026-09-09実行: 14 passed / 11 skipped。build成功。</div>
+        </article>
+
+        <article class="card warn">
+          <span class="tag before">P1 · 運用</span>
+          <h3>本番DBとPreviewの分離、復旧手順が未完成</h3>
+          <p>ADRはVercel統合がProductionとDevelopmentへ同じDATABASE_URLを入れ、Previewが本番DBへ触れると明記する。さらにdeploy buildがmigrationとseedを毎回実行する。誤ったPreview、将来の非互換migration、同時deployが本番データへ影響する。</p>
+          <p><strong>完了条件:</strong> PreviewはNeon branch/別DBへ分離し、本番migrationを単一jobへ直列化。deploy失敗時のrollback方針、日次 <code>pg_dump</code>、復元リハーサルを用意する。</p>
+          <div class="evidence"><code>apps/web/package.json</code> の <code>vercel-build</code>、ADR-0009「本番」、ADR-0010:136</div>
+        </article>
+
+        <article class="card warn">
+          <span class="tag before">P1 · 運用</span>
+          <h3>アカウント削除の設計はあるが、利用者の実行手段がない</h3>
+          <p>DBのcascadeはよく設計されている。一方、設定画面には表示名変更しかなく、退会API、削除申請窓口、本人確認手順がない。OAuth token・session・投稿・進捗がいつまで残るかも未定義である。</p>
+          <p><strong>完了条件:</strong> 当初は問い合わせによる手動削除でもよいので公開文書と運用を作り、期限を決める。できれば再認証付き退会操作を実装し、audit logに秘密やtokenを残さない。</p>
+          <div class="evidence">ADR-0011:98 はcascade方針。<code>/settings</code> に退会操作なし。</div>
+        </article>
+      </div>
+    </section>
+
+    <section id="data">
+      <h2>取得・保存されるデータ</h2>
+      <p>「パスワードを保存しない」は良い判断だが、「個人データを持たない」ことにはならない。公開文書は次の実態に合わせる。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>場所</th><th>データ</th><th>現在の期間</th><th>主なリスク / 必要事項</th></tr></thead>
+        <tbody>
+          <tr><td>Neon / Auth</td><td>氏名、email、画像URL、provider ID、access/refresh/id token、session token、自己申告AtCoder ID</td><td>未定義（アカウント存続中）</td><td>利用目的、公表、最小化、削除、token漏えい対策。アプリがprovider APIを使わないならtoken保存の必要性を再評価。</td></tr>
+          <tr><td>Neon / 精進</td><td>表示名、問題セット本文、公開範囲、いいね、bookmark、最終閲覧、自己申告の解答状態</td><td>未定義</td><td>公開/限定/非公開の意味、投稿ルール、本人請求、退会時cascade。</td></tr>
+          <tr><td>Neon / Duel</td><td>AtCoder ID、提出ID、時刻、判定、言語、勝敗</td><td>Match確定から90日</td><td>Duelを無効化する間は新規取得しない。公開時は参加前説明とAtCoder確認。</td></tr>
+          <tr><td>ブラウザー</td><td>theme、参加者key、直近Match URL、userscript link/token/outbox/seen</td><td>一部未保証</td><td>participant keyは実質的な認証情報。XSS耐性、終了時削除、端末共有時の説明。</td></tr>
+          <tr><td>Vercel等のlog</td><td>IP、User-Agent、URL、時刻、エラー情報等が入り得る</td><td>契約plan・設定を確認</td><td>privacy文書に委託とlog目的を反映。request body、cookie、tokenをconsole出力しない。</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="database">
+      <h2>データベース設計の評価</h2>
+      <div class="grid">
+        <article class="card good"><span class="tag later">良い点</span><h3>公開範囲はserver queryで判定</h3><p>privateを画面で隠すだけにせず、本人以外にはnull/404を返す。owner/user IDもclient入力ではなくAuth.js sessionから取る。</p></article>
+        <article class="card good"><span class="tag later">良い点</span><h3>整合性制約とcascadeが具体的</h3><p>foreign key、unique、CHECK、transaction、owner削除時cascadeがある。問題カタログ参照もrestrictされ、孤児データを防ぐ。</p></article>
+        <article class="card good"><span class="tag later">良い点</span><h3>通信暗号化を明示的に強制</h3><p>Neonの <code>sslmode=require</code> を <code>verify-full</code> へ固定し、将来のpg解釈変更で証明書検証が弱まることを防ぐ。Vercelではpool max=1。</p></article>
+        <article class="card warn"><span class="tag before">修正</span><h3>health checkが最新migrationを見ない</h3><p><code>REQUIRED_MIGRATION</code> は0001だけで、0002〜0004欠落でもhealthyになり得る。最新version、全必須version、seed件数を検査する。</p></article>
+        <article class="card warn"><span class="tag before">修正</span><h3>migration履歴と実DDLが弱く結び付く</h3><p>全SQLを毎回実行して最後にversionを記録する形で、checksumはない。適用済みfileの改変検知、advisory lock、forward-only方針を加える。</p></article>
+        <article class="card warn"><span class="tag before">修正</span><h3>無料枠はバックアップではない</h3><p>Neon Freeの復元履歴は最大6時間。翌日気づく論理削除には足りない。ユーザーデータ消失を許容するとしても、運営者が説明した保持方針との不一致や不正削除の証拠喪失は残る。</p></article>
+      </div>
+    </section>
+
+    <section id="external">
+      <h2>AtCoder / AtCoder Problemsの評価</h2>
+      <div class="callout"><strong>精進側だけなら、runtimeでAtCoderへ自動取得はしない。</strong> 固定JSONを検索し、問題名からAtCoderへリンクする。問題文・提出コード・cookieをCustom Contestへ送らないため、影響をかなり抑えている。ただし、データ生成時のAPI利用条件と、Duel公開時の提出監視は別問題である。</div>
+      <div class="grid" style="margin-top:16px">
+        <article class="card">
+          <span class="tag before">精進側</span>
+          <h3>公開前にAPI間隔を修正し、出典を表示</h3>
+          <p>APIの1秒超間隔を守る。AtCoder Problemsが非公式でDifficultyも非公式推定であることをUI/規約に明示する。MIT Licenseはrepository softwareのライセンスであり、AtCoder由来の全データに包括的な再利用許可を与えるものと断定しない。</p>
+        </article>
+        <article class="card danger">
+          <span class="tag stop">Duel側</span>
+          <h3>一般公開前にAtCoderへ問い合わせ</h3>
+          <p>提出一覧HTML/status JSONの自動取得は、公開APIとしての許可・数値上限を確認できない。本人セッション・低頻度でも自動的に許可済みにはならない。用途、最大同時人数、endpoint、頻度、field、非営利性、障害時停止を示して公式回答を得る。</p>
+        </article>
+        <article class="card warn">
+          <span class="tag before">userscript</span>
+          <h3>多重tabと無期限pollを止める</h3>
+          <p><code>@match</code> がAtCoder rootだけでもroot tabを複製でき、timerはtab内変数なので通信が倍増する。Custom Contest障害時に古いactive Matchが残り、期限なしにAtCoderをpollし得る。browser内leader lease、共通request queue、server疎通TTL、deadline停止を入れる。</p>
+        </article>
+        <article class="card warn">
+          <span class="tag before">利用形態</span>
+          <h3>企業・採用・商用へ広げない</h3>
+          <p>AtCoderは企業開催イベントで過去問を使うcontestとcoding testを禁止し、勉強会も採用活動と組み合わせないよう示している。個人の無料練習サービスへ一律適用されるとは断定できないが、収益化・企業利用時は直接の停止条件になる。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="legal">
+      <h2>法務・規約の確認結果</h2>
+      <details open><summary>個人情報保護法</summary><div><p>小規模・無料でも、反復継続してサービスを提供する個人情報取扱事業者になり得る。OAuth email等は個人情報であり、DBで検索可能な体系に入れば個人データに当たり得る。少なくとも利用目的の特定・通知/公表、安全管理、委託先監督、本人対応、漏えい時対応を準備する。一定の漏えい等ではPPC報告と本人通知が必要で、速報は概ね3〜5日以内が目安とされる。</p><p>Vercel/Neon等への保存が常に「外国第三者提供の同意」を要するとは限らず、委託として整理できる場合がある。ただし、保存国、契約、再委託、安全管理を確認し、公表内容へ反映する。個別の契約構成は専門家確認が必要。</p></div></details>
+      <details open><summary>Google / GitHub OAuth</summary><div><p>Google OAuthポリシーは、公開アプリのホームページに機能説明と利用規約・プライバシーポリシーへのリンクを求める。client secretは厳重に管理し、正確なapp identityと最小scopeを使う。GitHubもcallback URL、privacy URL、運営者情報を実態と一致させる。現状のDBはprovider tokenも保存するため、利用しないtokenを保持し続けない設計を検討する。</p></div></details>
+      <details><summary>著作権、商標、ユーザー投稿</summary><div><p>問題文や提出コードを複製せず、タイトル・ID・link中心なのはよい。とはいえAtCoder規約はサイト構成物の権利がAtCoderまたは権利者に帰属するとするため、「公開データだから自由利用」とは扱わない。AtCoder公式ロゴは現状見当たらない。将来使う場合、ガイドラインはサービス利用時に連絡を求める。</p><p>ユーザーがタイトル・説明を公開投稿できるため、第三者の問題文転載、侮辱、個人情報、違法情報、spamに対する禁止条項、通報、非公開化、削除、異議対応を決める。初期規模でも問い合わせ先は必要。</p></div></details>
+      <details><summary>電気通信事業法の外部送信規律、未成年、商用化</summary><div><p>OAuth、hosting、将来のanalytics/cookie等で利用者端末から第三者へ情報を送る場合、外部送信規律の対象サービス・情報に該当するかを確認し、該当するなら送信先、情報、目的の通知・公表等を行う。現状はanalytics/広告SDKを導入していないため範囲は小さい。</p><p>AtCoder利用者には未成年も想定される。規約同意、公開表示名、問い合わせ・削除方法を分かりやすくする。課金を始める場合はVercel Hobbyから移行し、特定商取引法表示、返金、税務、決済委託を別監査する。</p></div></details>
+    </section>
+
+    <section id="runbook">
+      <h2>今日進める場合の順番</h2>
+      <div class="checklist">
+        <div class="check"><div><h3>公開境界を「精進側のみ」に固定</h3><p>Battle画面のredirectに加え、Battle・Match・userscript APIをproduction flagで停止。userscript非配布、Fake evidence無効を検査する。</p></div></div>
+        <div class="check"><div><h3>P0のコード2件を修正</h3><p>problem setの所有者競合を原子的に防ぎ、catalog生成を1.1秒間隔の逐次取得へ直す。競合testと取得順testを追加する。</p></div></div>
+        <div class="check"><div><h3>公開文書と窓口を用意</h3><p>プライバシーポリシー、利用規約、問い合わせ先、削除申請方法をfooterとOAuth homepageから1回で到達可能にする。運営者名/連絡先は実在するものを入れる。</p></div></div>
+        <div class="check"><div><h3>本番環境を分離・固定</h3><p>ProductionとPreviewのDBを分ける。AUTH_SECRETを生成し、OAuth callbackを本番originへ限定。DATABASE_URLはpooled + <code>sslmode=verify-full</code>、Fake flagはunset。</p></div></div>
+        <div class="check"><div><h3>本番相当DBで検証</h3><p>空DBへ0001〜0004 migrationと3295問seedを適用。11 integration test、2アカウント認可、OAuth sign-in/out、private/unlisted、削除cascade、cold startを確認する。</p></div></div>
+        <div class="check"><div><h3>濫用と障害の最低限を入れる</h3><p>rate limit、件数上限、pagination、usage alert、error monitoring、kill switchを設定。security headers（CSP、Referrer-Policy、X-Content-Type-Options等）を追加しproduction responseで確認する。</p></div></div>
+        <div class="check"><div><h3>バックアップと事故対応を試す</h3><p>日次pg_dumpを本番DBと別の場所へ暗号化保存し、復元を一度行う。漏えい・不正投稿・DB停止・OAuth secret漏えいの連絡/停止手順を1ページにする。</p></div></div>
+        <div class="check"><div><h3>限定公開から段階的に開く</h3><p>まずアクセス制限付きPreviewで友人2〜5人、次に招待制production、最後に一般公開。一般公開前にproduction smoke testと費用上限を再確認する。</p></div></div>
+      </div>
+    </section>
+
+    <section id="evidence">
+      <h2>実施した検証と限界</h2>
+      <div class="grid">
+        <article class="card good"><span class="tag later">PASS</span><h3><code>pnpm check</code></h3><p>lint、typecheck、unit/API test、production buildが成功。14 tests passed。</p><div class="evidence">実行Nodeは22.12.0で、repository指定24.19.0とは不一致。CIは24.19.0を指定。</div></article>
+        <article class="card good"><span class="tag later">PASS</span><h3><code>pnpm audit --prod</code></h3><p>2026-09-09時点で既知脆弱性0件（38 direct/runtime metadata、総依存123）。</p><div class="evidence">既知advisoryがないことだけを示し、設計脆弱性や未知の脆弱性は含まない。</div></article>
+        <article class="card warn"><span class="tag before">NOT VERIFIED</span><h3>PostgreSQL integration</h3><p>DATABASE_URLがtest processになく11 tests skipped。本番Neon、migration、seed、認証を使ったend-to-endは未実施。</p></article>
+        <article class="card warn"><span class="tag before">NOT VERIFIED</span><h3>本番URL / response</h3><p>配備先の実URL、Vercel/Neon設定、OAuth consent screen、TLS/security headers、log内容、region、backup、alertsは未作成または未確認。</p></article>
+      </div>
+      <p class="callout" style="margin-top:16px">この監査はcommit <code>a0ebd12</code> のsourceと2026-09-09時点の公開資料に基づく。監査中に作業ツリーへ追加された未コミットのUI変更は対象外であり、本レポートから変更していない。運営者の実名/住所、対象ユーザー、収益化、hosting region、独自domain、外部解析サービスが変われば、法務判断も更新する。</p>
+    </section>
+
+    <section id="sources">
+      <h2>一次情報・リポジトリ根拠</h2>
+      <ul class="source-list">
+        <li><a href="https://www.ppc.go.jp/personalinfo/legal/guidelines_tsusoku/">個人情報保護委員会 — 個人情報保護法ガイドライン（通則編）</a></li>
+        <li><a href="https://www.ppc.go.jp/news/kaiseihou_feature/roueitouhoukoku_gimuka/">個人情報保護委員会 — 漏えい等報告・本人通知</a></li>
+        <li><a href="https://www.ppc.go.jp/personalinfo/legal/guidelines_offshore/">個人情報保護委員会 — 外国にある第三者への提供編</a></li>
+        <li><a href="https://developers.google.com/identity/protocols/oauth2/policies">Google — OAuth 2.0 Policies</a></li>
+        <li><a href="https://atcoder.jp/tos?lang=ja">AtCoder利用規約（2026-06-29改定）</a></li>
+        <li><a href="https://info.atcoder.jp/utilize/school/riyou">AtCoder — 企業・団体における利用</a></li>
+        <li><a href="https://info.atcoder.jp/logoguide">AtCoderロゴ利用ガイドライン</a></li>
+        <li><a href="https://github.com/kenkoooo/AtCoderProblems/blob/master/doc/api.md">AtCoder Problems API documentation</a></li>
+        <li><a href="https://github.com/kenkoooo/AtCoderProblems/blob/master/LICENSE">AtCoder Problems repository license</a></li>
+        <li><a href="https://vercel.com/docs/plans/hobby">Vercel Hobby plan</a></li>
+        <li><a href="https://neon.com/docs/introduction/plans">Neon plans</a></li>
+        <li><a href="https://neon.com/faqs/databases-recover-accidental-data-deletion">Neon restore history</a></li>
+        <li><code>docs/decisions/0004-submission-evidence.md</code></li>
+        <li><code>docs/decisions/0009-deployment-and-auth.md</code></li>
+        <li><code>docs/decisions/0010-practice-first-deployment-and-database.md</code></li>
+        <li><code>docs/decisions/0011-problem-set-persistence.md</code></li>
+        <li><code>docs/security/external-service-usage.md</code></li>
+        <li><code>apps/web/src/server/problem-sets/queries.ts</code></li>
+        <li><code>apps/web/src/server/db/client.ts</code></li>
+        <li><code>apps/userscript/src/index.ts</code></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer><div class="shell">Custom Contest deployment readiness review · Source review + independent external-service recheck · 2026-09-09</div></footer>
+</body>
+</html>

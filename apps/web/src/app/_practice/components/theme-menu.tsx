@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import { PRACTICE_THEMES, PRACTICE_THEME_STORAGE_KEY, type PracticeTheme } from "../theme";
+import { HeaderMenu } from "./header-menu";
 
 /**
  * テーマの実体は`<html>`のdata属性で、Reactの外にある。
@@ -37,22 +38,41 @@ function applyTheme(next: PracticeTheme): void {
   for (const listener of listeners) listener();
 }
 
-export function ThemeSwitch() {
+/**
+ * 表示テーマの選択。3案を横に並べる帯をやめ、メニューバーに畳んだ。
+ * ヘッダーの右側はボタン2つになり、案を増やしても幅が伸びない。
+ */
+export function ThemeMenu() {
   const theme = useSyncExternalStore(subscribe, currentTheme, () => "light" as PracticeTheme);
 
   return (
-    <div className="theme-switch" role="group" aria-label="表示テーマ">
-      {PRACTICE_THEMES.map((option) => (
-        <button
-          key={option.key}
-          type="button"
-          className={`theme-switch-option${theme === option.key ? " is-current" : ""}`}
-          aria-pressed={theme === option.key}
-          onClick={() => applyTheme(option.key)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
+    <HeaderMenu
+      lead="表示テーマ"
+      label={
+        <>
+          <span className={`theme-swatch is-${theme}`} aria-hidden="true" />
+          <span className="header-menu-label">Color</span>
+        </>
+      }
+    >
+      {(close) =>
+        PRACTICE_THEMES.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            role="menuitemradio"
+            aria-checked={theme === option.key}
+            className={`header-menu-item${theme === option.key ? " is-current" : ""}`}
+            onClick={() => {
+              applyTheme(option.key);
+              close();
+            }}
+          >
+            <span className={`theme-swatch is-${option.key}`} aria-hidden="true" />
+            {option.label}
+          </button>
+        ))
+      }
+    </HeaderMenu>
   );
 }

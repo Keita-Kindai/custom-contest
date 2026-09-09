@@ -15,6 +15,7 @@ import {
 } from "@custom-contest/contracts";
 
 import { EmptyState, SetCard } from "./components/atoms";
+import { SetGridSkeleton } from "./components/skeletons";
 import { problemSetRepository } from "./data/repository";
 import { usePracticeData } from "./use-practice-data";
 
@@ -104,7 +105,7 @@ export function LibraryView({ signedIn }: { signedIn: boolean }) {
         </div>
 
         <div style={{ paddingTop: "var(--space-5)" }}>
-          {sets.loading && <p className="practice-loading">読み込み中…</p>}
+          {sets.loading && <SetGridSkeleton count={6} />}
           {!sets.loading && (sets.data?.length ?? 0) === 0 && (
             <EmptyState title={EMPTY_HINT[tab].title} hint={EMPTY_HINT[tab].hint} />
           )}

@@ -3,7 +3,7 @@
  * どちらか一方に決め切るまでは、実物を並べて比べられるほうが判断しやすい。
  *
  * bootstrapスクリプトをroot layout（server component）から埋めるため、
- * ここは`"use client"`を付けない。client側の`theme-switch.tsx`もこの定義を読む。
+ * ここは`"use client"`を付けない。client側の`components/theme-menu.tsx`もこの定義を読む。
  */
 export const PRACTICE_THEMES = [
   { key: "light", label: "ライト" },

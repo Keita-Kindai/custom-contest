@@ -13,6 +13,7 @@ import {
 } from "@custom-contest/contracts";
 
 import { EmptyState, SetCard, TagPill } from "./components/atoms";
+import { SetGridSkeleton } from "./components/skeletons";
 import { problemSetRepository } from "./data/repository";
 import { usePracticeData } from "./use-practice-data";
 
@@ -160,7 +161,7 @@ export function DiscoverView() {
             </label>
           </div>
 
-          {results.loading && <p className="practice-loading">読み込み中…</p>}
+          {results.loading && <SetGridSkeleton count={6} variant="featured" />}
           {!results.loading && (results.data?.length ?? 0) === 0 && (
             <EmptyState
               title="条件に合う問題セットがありません"
@@ -182,11 +183,15 @@ export function DiscoverView() {
               <h2>新着の問題セット</h2>
               <span className="ps-section-note">最近更新されたセット</span>
             </div>
-            <div className="set-grid is-featured">
-              {fresh.data?.map((summary) => (
-                <SetCard key={summary.setId} summary={summary} variant="featured" />
-              ))}
-            </div>
+            {fresh.data === null ? (
+              <SetGridSkeleton count={3} variant="featured" />
+            ) : (
+              <div className="set-grid is-featured">
+                {fresh.data.map((summary) => (
+                  <SetCard key={summary.setId} summary={summary} variant="featured" />
+                ))}
+              </div>
+            )}
           </section>
 
           <section aria-label="いいね数が多い問題セット">
@@ -194,11 +199,15 @@ export function DiscoverView() {
               <h2>いいね数が多い問題セット</h2>
               <span className="ps-section-note">よく使われているセット</span>
             </div>
-            <div className="set-grid">
-              {loved.data?.map((summary) => (
-                <SetCard key={summary.setId} summary={summary} />
-              ))}
-            </div>
+            {loved.data === null ? (
+              <SetGridSkeleton count={4} />
+            ) : (
+              <div className="set-grid">
+                {loved.data.map((summary) => (
+                  <SetCard key={summary.setId} summary={summary} />
+                ))}
+              </div>
+            )}
           </section>
         </>
       )}

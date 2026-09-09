@@ -27,7 +27,7 @@ export default async function SignInPage() {
           <form
             action={async () => {
               "use server";
-              await signOut({ redirectTo: "/" });
+              await signOut({ redirectTo: "/discover" });
             }}
           >
             <p>
@@ -53,7 +53,7 @@ export default async function SignInPage() {
                 key={provider.id}
                 action={async () => {
                   "use server";
-                  await signIn(provider.id, { redirectTo: "/" });
+                  await signIn(provider.id, { redirectTo: "/discover" });
                 }}
               >
                 <button className="button button-primary" type="submit">
@@ -66,8 +66,8 @@ export default async function SignInPage() {
       </section>
 
       <div className="section-block">
-        <Link className="button button-quiet" href="/">
-          トップへ戻る
+        <Link className="button button-quiet" href="/discover">
+          Discoverへ戻る
         </Link>
       </div>
     </AppShell>

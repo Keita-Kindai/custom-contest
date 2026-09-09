@@ -6,8 +6,8 @@ import "../../tokens.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AC Duel — 友達とAtCoder BO1",
-  description: "AtCoderの過去問で、友達と1問先取のカジュアル対戦。",
+  title: "Custom Contest",
+  description: "AtCoderの過去問から問題セットを作り、共有して解き進めます。",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

@@ -86,12 +86,12 @@
 | DESIGN-080 | 精進 / 対応幅 | Discoverとライブラリをモバイル幅の保証対象に含めるか | User | Open |
 | DESIGN-081 | 精進 / 作成 | 作成をステップ式（12章の5 step）にするか、1画面（13章のモック）にするか | User | Open: 13章が「3ステップに簡略化できる想定。ステップ数の最終形は次のラウンドで確定」としているため、現状は1画面で実装 |
 | DESIGN-082 | 精進 / Difficulty | `is_experimental`のDifficulty推定値を表示するか伏せるか | User | Open: 現状は伏せて「—」を出す。ABC001〜のような古い回が該当 |
-| DESIGN-089 | 配備 | 公開先をVercelにするか、常駐processのhostにするか | User | Resolved: 常駐process（Fly.io / Render）+ Neon。Room stateがprocess内にあるためserverlessを採らない（ADR-0009） |
+| DESIGN-089 | 配備 | 公開先をVercelにするか、常駐processのhostにするか | User | Resolved: 常駐process（Fly.io / Render）+ Neon（ADR-0009）。ただし2026-09-08時点でFly.ioに無料枠がなくRenderの無料DBは30日で期限切れになるため、精進側を先に公開する前提でADR-0010が選び直している |
 | DESIGN-090 | 認証 | localStorageに残っている問題セットを、ログイン後のアカウントへどう引き継ぐか | User | Open |
 | DESIGN-091 | 認証 | Room作成と対戦参加にログインを必須にするか | User | Open: 現状は必須にしていない |
 | DESIGN-083 | 精進 / 問題一覧 | 問題行から AtCoder へ移動する導線を、独立したボタンにするか問題名そのものにするか | User | Resolved: 問題名をリンクにし、「AtCoderで開く」ボタンは廃止 |
 | DESIGN-084 | 精進 / 挑戦状態 | 解いたかどうかを本人の自己申告で持つか、AtCoderの提出履歴から自動判定するか | User | Resolved: 自己申告の3値（未AC / 自力AC / 解説AC）。problemId単位でセットをまたいで共有する。自動判定は認証と提出履歴取得の導入後に再検討 |
-| DESIGN-085 | 精進 / 検索結果 | Discoverの検索結果を高密度の表にするか、検索前と同じカードにするか | User | Resolved: カードに統一。`SetRow`と表headerは残すが未使用 |
+| DESIGN-085 | 精進 / 検索結果 | Discoverの検索結果を高密度の表にするか、検索前と同じカードにするか | User | Resolved: カードに統一。未使用だった`SetRow`と表headerは2026-09-08に削除 |
 | DESIGN-086 | 対戦 / 導線 | 対戦側の画面から精進側へ進む導線を置くか | User | Resolved: トップと`/battle/new`に`/discover`へのリンクを置く。出題を問題セットから行う機能結合は別Issue |
 | DESIGN-087 | デモ / 通信 | 遠隔デモの公開経路をVercelへの配備にするか、ホストPCへのtunnelにするか | User | Resolved: Cloudflare Tunnel。Room stateがprocess内のMapのため、serverlessでは複数instanceに分裂して壊れる |
 | DESIGN-088 | 対戦 / BO3 | BO3を「Matchが最大3 Roundを含む」で表すか、「Seriesが最大3 Matchを含む」で表すか | User | Resolved: Seriesが最大3 Matchを含む（ADR-0008）。実装は日曜デモ後 |
@@ -99,7 +99,15 @@
 | DESIGN-093 | 精進 / 一覧 | 挑戦状態を行に文字で出すか、印と色だけにするか | User | Resolved: 一覧は印（○ ● ◐）と色、文字は凡例へ集約 |
 | DESIGN-094 | 精進 / 作成 | 公開範囲をいつ選ばせるか | User | Resolved: 常時表示をやめ、「保存する」を押した時点で選ぶ。下書きは非公開のまま |
 | DESIGN-095 | 精進 / 指標 | 想定時間を出し続けるか | User | Resolved: 表示をやめ`estimateMinutes`を削除。代わりに作成者が選ぶ想定者を出す |
-| DESIGN-096 | 精進 / 想定者 | 想定者を1色で持つか、範囲で持つか | User | Resolved: 段を複数押し、表示は最小段〜最大段。1段だけならその段だけ |
+| DESIGN-096 | 精進 / 想定者 | 想定者を1色で持つか、範囲で持つか | User | Resolved: 段を複数押し、表示は押した段の色をその数だけ並べる。最小段〜最大段のレンジ表示は、押していない段まで含んで見えるため2026-09-07に廃止 |
 | DESIGN-097 | 精進 / ライブラリ | 保存したセットを進み具合で分けるか | User | Resolved: 全てAC / 進行中 / 未着手。解説ACもACとして数える。全タブで使える切り替え |
 | DESIGN-098 | 精進 / 検索 | 3295問のうち上位20件しか見られない状態をどうするか | User | Resolved: `offset`によるページ送りと表示件数の切り替え、ページ単位の一括追加 |
 | DESIGN-099 | 精進 / 問題data | Codeforcesの問題をカタログへ入れるか | User | Open: 今回は入れない。rating体系とURL形式が異なるため別Issue |
+| DESIGN-100 | 精進 / カード | タイトルとタグの長さがカードごとに違うとき、対象者・問題数・作成者の位置をどう揃えるか | User | Resolved: タイトルは2行で省略、タグ欄は2行で固定し入り切らない分を「+N」にまとめる。高さを固定した結果、下2段は全カードで同じ位置に並ぶ |
+| DESIGN-101 | 精進 / カード | いいね数と公開範囲をカードのどこへ置くか | User | Resolved: 公開範囲をタイトル行の右端、いいね数を作成者名の行の右端。Discoverでは公開範囲を出さない |
+| DESIGN-102 | 精進 / カード | タグが1つもないセットの見せ方 | User | Resolved: 破線枠の「タグなし」を表示だけ出す。契約のtag enumには加えず、検索の絞り込み対象にもしない |
+| DESIGN-103 | 精進 / 作成 | 掴んで並べ替えるとき、落ちる先をどう見せるか | User | Resolved: 行を塗らず、差し込まれるすきまに線を出す。行を塗ると入れ替えに見えるが、実際は挿入で並べ替えるため |
+| DESIGN-104 | 精進 / 作成 | 挑戦状態（未AC / 自力AC / 解説AC）を作成画面にも出すか | User | Resolved: 作成画面の検索結果と追加済みの両方から外す。記録はセット詳細で行う |
+| DESIGN-105 | 精進 / 作成 | 見出しジャンプをページ上部に貼り付けるか、右カードへ入れるか | User | Resolved: 右の「追加済み」カードの最下部。カード自体が貼り付くので二重に貼り付けない |
+| DESIGN-106 | 精進 / 作成 | 一括追加が契約の上限（50問）を超えられる状態をどうするか | User | Resolved: 上限で打ち切り、何問追加したかを通知する。保存直前に`problemSetSchema`で検証する |
+| DESIGN-107 | 配備 | 精進側と対戦側のどちらを先に公開するか | User | Resolved: 精進側を先に公開する。精進側はprocess内に状態を持たないため、対戦側の制約を受けない（ADR-0010） |

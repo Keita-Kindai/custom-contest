@@ -5,18 +5,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   DIFFICULTY_BANDS,
+  MAX_PROBLEMS_PER_SET,
   PROBLEM_SET_TAGS,
   VISIBILITY_HELP,
   VISIBILITY_LABEL,
   difficultyRangeOf,
+  problemSetSchema,
   visibilitySchema,
   type BandKey,
   type CatalogProblem,
   type ProblemSearchResponse,
   type ProblemSet,
   type ProblemSetTag,
-  type SolveStatus,
-  type SolveStatusMap,
   type Visibility,
 } from "@custom-contest/contracts";
 
@@ -24,7 +24,6 @@ import {
   DifficultyDot,
   DifficultyRangeChip,
   ProblemTitleLink,
-  SolveStatusControl,
   TagPill,
   TargetBandDots,
 } from "./components/atoms";
@@ -43,13 +42,15 @@ const DIFFICULTY_BANDS_FILTER: { label: string; min: number | null; max: number 
 
 const PAGE_SIZES = [20, 50, 100];
 
-/** 上の見出しへ飛ぶための並び。左から順に並べる。 */
+/**
+ * 左の列の見出しへ飛ぶための並び。左から順に並べる。
+ * 「追加済み」はこの並び自身が入っているカードなので、行き先に入れない。
+ */
 const SECTIONS = [
   { id: "set-title", label: "タイトル" },
   { id: "set-tags", label: "タグ" },
   { id: "set-bands", label: "想定者" },
   { id: "set-search", label: "問題検索" },
-  { id: "set-added", label: "追加済み" },
 ] as const;
 
 export function SetEditorView({ setId }: { setId?: string }) {
@@ -69,7 +70,11 @@ export function SetEditorView({ setId }: { setId?: string }) {
   const [visibilityDraft, setVisibilityDraft] = useState<Visibility>("public");
   /** ドラッグ中の行。⠿ を掴んだときだけ立てて、行全体が勝手に動かないようにする。 */
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  /**
+   * 離したときに差し込む位置。行番号ではなく行と行のすきまを指す。
+   * 0は先頭の前、`problems.length`は末尾の後。
+   */
+  const [dropSlot, setDropSlot] = useState<number | null>(null);
 
   const [term, setTerm] = useState("");
   const [bandIndex, setBandIndex] = useState(0);
@@ -78,7 +83,6 @@ export function SetEditorView({ setId }: { setId?: string }) {
   const [results, setResults] = useState<ProblemSearchResponse | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [solveStatuses, setSolveStatuses] = useState<SolveStatusMap>({});
   const requestId = useRef(0);
 
   // 編集時は既存の内容を初期値にする。
@@ -96,10 +100,6 @@ export function SetEditorView({ setId }: { setId?: string }) {
       setLoaded(true);
     });
   }, [setId]);
-
-  useEffect(() => {
-    void problemSetRepository.solveStatuses().then(setSolveStatuses);
-  }, []);
 
   const runSearch = useCallback(async () => {
     const band = DIFFICULTY_BANDS_FILTER[bandIndex] ?? DIFFICULTY_BANDS_FILTER[0]!;
@@ -145,18 +145,30 @@ export function SetEditorView({ setId }: { setId?: string }) {
   }
 
   function addProblem(problem: CatalogProblem) {
-    setProblems((current) =>
-      current.some((item) => item.problemId === problem.problemId) ? current : [...current, problem],
-    );
+    if (problems.some((item) => item.problemId === problem.problemId)) return;
+    if (problems.length >= MAX_PROBLEMS_PER_SET) {
+      setNotice(`1セットに入れられるのは${MAX_PROBLEMS_PER_SET}問までです。`);
+      return;
+    }
+    setNotice(null);
+    setProblems((current) => [...current, problem]);
   }
 
-  /** 表示中のページのうち、まだ入っていないものをまとめて入れる。 */
+  /**
+   * 表示中のページのうち、まだ入っていないものをまとめて入れる。
+   * 1ページは最大100件だが、セットの上限は`MAX_PROBLEMS_PER_SET`問なので、そこで打ち切る。
+   */
   function addPage() {
-    const found = results?.problems ?? [];
-    setProblems((current) => {
-      const known = new Set(current.map((item) => item.problemId));
-      return [...current, ...found.filter((problem) => !known.has(problem.problemId))];
-    });
+    const known = new Set(problems.map((item) => item.problemId));
+    const fresh = (results?.problems ?? []).filter((problem) => !known.has(problem.problemId));
+    const room = MAX_PROBLEMS_PER_SET - problems.length;
+    setNotice(
+      fresh.length > room
+        ? `1セットに入れられるのは${MAX_PROBLEMS_PER_SET}問までです。${room}問だけ追加しました。`
+        : null,
+    );
+    if (room <= 0) return;
+    setProblems((current) => [...current, ...fresh.slice(0, room)]);
   }
 
   function removeProblem(problemId: string) {
@@ -175,21 +187,20 @@ export function SetEditorView({ setId }: { setId?: string }) {
     });
   }
 
-  /** ドラッグした行を、離した位置へ差し込む。入れ替えではなく挿入で並べ替える。 */
-  function reorder(from: number, to: number) {
+  /**
+   * ドラッグした行を、線が出ているすきまへ差し込む。入れ替えではなく挿入で並べ替える。
+   * `slot`は行と行のあいだを指すので、自分より後ろへ動かすときは自分が抜けた分だけ前へ寄せる。
+   */
+  function reorderToSlot(from: number, slot: number) {
     setProblems((current) => {
-      if (from === to || from < 0 || to < 0 || from >= current.length || to >= current.length) {
-        return current;
-      }
+      if (from < 0 || from >= current.length) return current;
+      const to = slot > from ? slot - 1 : slot;
+      if (to === from) return current;
       const next = [...current];
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved!);
       return next;
     });
-  }
-
-  function changeSolveStatus(problemId: string, next: SolveStatus) {
-    void problemSetRepository.setSolveStatus(problemId, next).then(setSolveStatuses);
   }
 
   async function save(status: "draft" | "published", chosen?: Visibility) {
@@ -227,7 +238,15 @@ export function SetEditorView({ setId }: { setId?: string }) {
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
-    await problemSetRepository.save(set);
+    // 保存の直前に契約どおりの形かを確かめる。問題数の上限のような制約は、
+    // 画面側で防いでいてもここが最後の関門になる。
+    const parsed = problemSetSchema.safeParse(set);
+    if (!parsed.success) {
+      setSaving(false);
+      setNotice("保存できない内容が含まれています。問題数やタイトルの長さを確認してください。");
+      return;
+    }
+    await problemSetRepository.save(parsed.data);
     setSaving(false);
     router.push(`/sets/${set.setId}`);
   }
@@ -261,14 +280,6 @@ export function SetEditorView({ setId }: { setId?: string }) {
           </button>
         </div>
       </div>
-
-      <nav className="section-jump" aria-label="このページの見出し">
-        {SECTIONS.map((section) => (
-          <a key={section.id} href={`#${section.id}`}>
-            {section.label}
-          </a>
-        ))}
-      </nav>
 
       {notice && <p className="practice-notice">{notice}</p>}
 
@@ -468,7 +479,6 @@ export function SetEditorView({ setId }: { setId?: string }) {
             <div className="search-results">
               <div className="search-row is-head" aria-hidden="true">
                 <span>問題</span>
-                <span>状態</span>
                 <span>Diff</span>
                 <span />
               </div>
@@ -482,11 +492,6 @@ export function SetEditorView({ setId }: { setId?: string }) {
                     />
                     <span className="problem-source">{problem.source}</span>
                   </span>
-                  <SolveStatusControl
-                    status={solveStatuses[problem.problemId] ?? "unsolved"}
-                    problemTitle={problem.title}
-                    onChange={(next) => changeSolveStatus(problem.problemId, next)}
-                  />
                   <DifficultyDot difficulty={problem.difficulty} />
                   <button
                     className="practice-button is-small"
@@ -521,8 +526,9 @@ export function SetEditorView({ setId }: { setId?: string }) {
             <div className="added-list">
               {problems.map((problem, index) => (
                 <div
-                  className={`added-row${dragIndex === index ? " is-dragging" : ""}${
-                    dragOverIndex === index && dragIndex !== index ? " is-drop-target" : ""
+                  // 1本のすきまに線が二重に出ないよう、末尾のうしろだけ`is-drop-after`で描く。
+                  className={`added-row${dropSlot === index ? " is-drop-before" : ""}${
+                    dropSlot === problems.length && index === problems.length - 1 ? " is-drop-after" : ""
                   }`}
                   key={problem.problemId}
                   draggable={dragIndex === index}
@@ -535,18 +541,20 @@ export function SetEditorView({ setId }: { setId?: string }) {
                     if (dragIndex === null) return;
                     event.preventDefault();
                     event.dataTransfer.dropEffect = "move";
-                    setDragOverIndex(index);
+                    // 行の上半分なら手前のすきま、下半分なら次のすきまへ線を出す。
+                    const box = event.currentTarget.getBoundingClientRect();
+                    setDropSlot(event.clientY < box.top + box.height / 2 ? index : index + 1);
                   }}
                   onDrop={(event) => {
-                    if (dragIndex === null) return;
+                    if (dragIndex === null || dropSlot === null) return;
                     event.preventDefault();
-                    reorder(dragIndex, index);
+                    reorderToSlot(dragIndex, dropSlot);
                     setDragIndex(null);
-                    setDragOverIndex(null);
+                    setDropSlot(null);
                   }}
                   onDragEnd={() => {
                     setDragIndex(null);
-                    setDragOverIndex(null);
+                    setDropSlot(null);
                   }}
                 >
                   {/*
@@ -579,15 +587,9 @@ export function SetEditorView({ setId }: { setId?: string }) {
                       title={problem.title}
                     />
                   </span>
-                  <SolveStatusControl
-                    status={solveStatuses[problem.problemId] ?? "unsolved"}
-                    problemTitle={problem.title}
-                    compact
-                    onChange={(next) => changeSolveStatus(problem.problemId, next)}
-                  />
                   <DifficultyDot difficulty={problem.difficulty} />
                   <button
-                    className="icon-button"
+                    className="icon-button is-bare"
                     type="button"
                     onClick={() => removeProblem(problem.problemId)}
                     aria-label={`${problem.title}を削除`}
@@ -617,6 +619,16 @@ export function SetEditorView({ setId }: { setId?: string }) {
               <dd>{visibility === null ? "未設定（保存時に選択）" : VISIBILITY_LABEL[visibility]}</dd>
             </div>
           </dl>
+
+          {/* 見出しへの近道。左の列を上下に往復せずに済むよう、常に見えるこのカードの中に置く。 */}
+          <nav className="section-jump" aria-label="このページの項目">
+            <span className="section-jump-title">このページの項目</span>
+            {SECTIONS.map((section) => (
+              <a key={section.id} href={`#${section.id}`}>
+                {section.label}
+              </a>
+            ))}
+          </nav>
         </aside>
       </div>
     </div>

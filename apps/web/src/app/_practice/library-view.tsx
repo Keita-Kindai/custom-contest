@@ -11,7 +11,7 @@ import {
   setProgressOf,
   type LibraryTab,
   type ProblemSetSummary,
-  type SolveStatusMap,
+  type SetSolveStatusMap,
 } from "@custom-contest/contracts";
 
 import { EmptyState, SetCard } from "./components/atoms";
@@ -28,19 +28,21 @@ const EMPTY_HINT: Record<LibraryTab, { title: string; hint: string }> = {
 export function LibraryView() {
   const [tab, setTab] = useState<LibraryTab>("created");
   const [grouped, setGrouped] = useState(false);
-  const [statuses, setStatuses] = useState<SolveStatusMap>({});
+  const [statuses, setStatuses] = useState<SetSolveStatusMap>({});
   const counts = usePracticeData(() => problemSetRepository.counts(), []);
   const sets = usePracticeData(() => problemSetRepository.library(tab), [tab]);
 
   useEffect(() => {
-    void problemSetRepository.solveStatuses().then(setStatuses);
+    void problemSetRepository.allSolveStatuses().then(setStatuses);
   }, []);
 
   /** 進み具合ごとの束。全てAC・進行中・未着手のどれに入るかは挑戦状態から決める。 */
   function groupsOf(summaries: ProblemSetSummary[]) {
     return SET_PROGRESS_ORDER.map((progress) => ({
       progress,
-      summaries: summaries.filter((summary) => setProgressOf(summary.problemIds, statuses) === progress),
+      summaries: summaries.filter(
+        (summary) => setProgressOf(summary.problemIds, statuses[summary.setId] ?? {}) === progress,
+      ),
     })).filter((group) => group.summaries.length > 0);
   }
 

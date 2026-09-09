@@ -66,6 +66,12 @@ export const problemSetIdSchema = z.string().regex(/^ps_[0-9a-z]{10}$/);
 export const problemSetItemSchema = catalogProblemSchema;
 export type ProblemSetItem = z.infer<typeof problemSetItemSchema>;
 
+/**
+ * 1セットに入れられる問題数の上限。
+ * 一括追加は1ページ最大100件を返すので、作成画面はこの値で打ち切る必要がある。
+ */
+export const MAX_PROBLEMS_PER_SET = 50;
+
 /** 想定者に使うrating色のkey。DIFFICULTY_BANDSと同じ段。 */
 export const bandKeySchema = z.enum(["gray", "brown", "green", "cyan", "blue", "yellow", "orange", "red"]);
 export type BandKey = z.infer<typeof bandKeySchema>;
@@ -77,7 +83,7 @@ export const problemSetSchema = z.object({
   tags: z.array(problemSetTagSchema).max(6),
   visibility: visibilitySchema,
   status: problemSetStatusSchema,
-  problems: z.array(problemSetItemSchema).max(50),
+  problems: z.array(problemSetItemSchema).max(MAX_PROBLEMS_PER_SET),
   /**
    * 作成者が想定した対象のrating色。押した段だけを持ち、表示でも押した段の色をその数だけ並べる。
    * 問題から計算するDifficultyとは別で、作成者の意図を表す。
@@ -243,10 +249,20 @@ export function nextSolveStatus(current: SolveStatus): SolveStatus {
 }
 
 /**
- * problemIdをkeyにした挑戦状態。問題単位で持つため、同じ問題を複数のセットへ入れても状態は1つ。
- * 記録のない問題は`unsolved`として扱う。
+ * 1つのセットの中の挑戦状態。problemIdをkeyにする。記録のない問題は`unsolved`として扱う。
  */
 export type SolveStatusMap = Record<string, SolveStatus>;
+
+/**
+ * setIdをkeyにした挑戦状態。記録はセットの中で閉じる。
+ *
+ * 以前は問題単位で1つだけ持っていたが、それだと「DP入門で解いた問題」が、
+ * 同じ問題を含む別のセットでも解いた扱いになってしまう。セットは一続きの課題なので、
+ * どこまで進んだかはセットごとに数える。
+ *
+ * この形はDBへ移すときの`(user_id, set_id, problem_id, status)`にそのまま対応する。
+ */
+export type SetSolveStatusMap = Record<string, SolveStatusMap>;
 
 /**
  * 保存したセットを分けるための進み具合。解説ACもACとして数える。

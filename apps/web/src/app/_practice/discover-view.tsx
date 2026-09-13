@@ -183,11 +183,11 @@ export function DiscoverView() {
               <h2>新着の問題セット</h2>
               <span className="ps-section-note">最近更新されたセット</span>
             </div>
-            {fresh.data === null ? (
+            {fresh.loading ? (
               <SetGridSkeleton count={3} variant="featured" />
             ) : (
               <div className="set-grid is-featured">
-                {fresh.data.map((summary) => (
+                {fresh.data?.map((summary) => (
                   <SetCard key={summary.setId} summary={summary} variant="featured" />
                 ))}
               </div>
@@ -199,11 +199,11 @@ export function DiscoverView() {
               <h2>いいね数が多い問題セット</h2>
               <span className="ps-section-note">よく使われているセット</span>
             </div>
-            {loved.data === null ? (
+            {loved.loading ? (
               <SetGridSkeleton count={4} />
             ) : (
               <div className="set-grid">
-                {loved.data.map((summary) => (
+                {loved.data?.map((summary) => (
                   <SetCard key={summary.setId} summary={summary} />
                 ))}
               </div>

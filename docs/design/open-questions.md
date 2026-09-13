@@ -94,7 +94,7 @@
 | DESIGN-085 | 精進 / 検索結果 | Discoverの検索結果を高密度の表にするか、検索前と同じカードにするか | User | Resolved: カードに統一。未使用だった`SetRow`と表headerは2026-09-08に削除 |
 | DESIGN-086 | 対戦 / 導線 | 対戦側の画面から精進側へ進む導線を置くか | User | Resolved: トップと`/battle/new`に`/discover`へのリンクを置く。出題を問題セットから行う機能結合は別Issue |
 | DESIGN-087 | デモ / 通信 | 遠隔デモの公開経路をVercelへの配備にするか、ホストPCへのtunnelにするか | User | Resolved: Cloudflare Tunnel。Room stateがprocess内のMapのため、serverlessでは複数instanceに分裂して壊れる |
-| DESIGN-088 | 対戦 / BO3 | BO3を「Matchが最大3 Roundを含む」で表すか、「Seriesが最大3 Matchを含む」で表すか | User | Resolved: Seriesが最大3 Matchを含む（ADR-0008）。実装は日曜デモ後 |
+| DESIGN-088 | 対戦 / BO3 | BO3を「Matchが最大3 Roundを含む」で表すか、「Seriesが最大3 Matchを含む」で表すか | User | Resolved: Seriesが最大3 Matchを含む（ADR-0012）。実装は日曜デモ後 |
 | DESIGN-092 | 精進 / 色 | Difficultyの色をAtCoder準拠の8段にするか、brand accentを避けた独自6段のままにするか | User | Resolved: AtCoderのrating色8段。橙は枠線chipで描いてaccentと分ける（ADR-0007追記） |
 | DESIGN-093 | 精進 / 一覧 | 挑戦状態を行に文字で出すか、印と色だけにするか | User | Resolved: 一覧は印（○ ● ◐）と色、文字は凡例へ集約 |
 | DESIGN-094 | 精進 / 作成 | 公開範囲をいつ選ばせるか | User | Resolved: 常時表示をやめ、「保存する」を押した時点で選ぶ。下書きは非公開のまま |

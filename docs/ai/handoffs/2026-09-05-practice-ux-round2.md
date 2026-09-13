@@ -62,7 +62,7 @@ BO3を書き始める前に、用語とコードが食い違っていること�
 
 `CONTEXT.md`は「BO3のMatchは最大3 Roundからなる」と書いていたが、コードでは1 Match = 1問 = 1結果で、`match_results`のprimary keyは`matchId`、結果URLも`/battle/m/[matchId]`。再戦は新しいMatchを作る。つまり「3 Roundを含むMatch」はどこにも無い。
 
-**ADR-0008**でコード側を正とした。Seriesが最大3 Matchを含む。Roundは「Seriesの何試合目か」を指す位置で、1 Roundは1 Matchとして実現する。`CONTEXT.md`も直した。
+**ADR-0012**でコード側を正とした。Seriesが最大3 Matchを含む。Roundは「Seriesの何試合目か」を指す位置で、1 Roundは1 Matchとして実現する。`CONTEXT.md`も直した。
 
 決めたルール:
 

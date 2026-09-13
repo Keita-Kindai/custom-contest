@@ -26,8 +26,12 @@
 Room内で開始し、勝ち、負け、引き分け、または無効のいずれかが確定するまでの1回の競技。
 _Avoid_: Game, Battle（単体の結果を指す意味では使わない）
 
+**Series（シリーズ）**:
+同じRoomで連続して行い、勝敗を通算する一連のMatch。BO1のSeriesは1 Match、BO3のSeriesは最大3 Matchからなる。
+
 **Round（ラウンド）**:
-Battle modeで、1問の勝者を決める単位。BO1のMatchは1 Round、BO3のMatchは最大3 Roundからなる。
+Seriesの中で何試合目かを指す位置。1つのRoundは1つのMatchとして実現する。
+以前は「Matchが最大3 Roundを含む」と定義していたが、Matchは1問・1結果の単位なので誤りだった。ADR-0008で取り消した。
 
 **Participant（参加者）**:
 Roomの2つの席のいずれかを持つ人。HostとInviteeの総称。

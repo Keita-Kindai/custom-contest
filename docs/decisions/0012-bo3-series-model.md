@@ -1,4 +1,4 @@
-# ADR-0008: BO3の表し方（Seriesが最大3 Matchを含む）
+# ADR-0012: BO3の表し方（Seriesが最大3 Matchを含む）
 
 - Status: Accepted（設計のみ。実装は日曜デモ後）
 - Date: 2026-09-05

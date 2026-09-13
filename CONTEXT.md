@@ -31,7 +31,7 @@ _Avoid_: Game, Battle（単体の結果を指す意味では使わない）
 
 **Round（ラウンド）**:
 Seriesの中で何試合目かを指す位置。1つのRoundは1つのMatchとして実現する。
-以前は「Matchが最大3 Roundを含む」と定義していたが、Matchは1問・1結果の単位なので誤りだった。ADR-0008で取り消した。
+以前は「Matchが最大3 Roundを含む」と定義していたが、Matchは1問・1結果の単位なので誤りだった。ADR-0012で取り消した。
 
 **Participant（参加者）**:
 Roomの2つの席のいずれかを持つ人。HostとInviteeの総称。

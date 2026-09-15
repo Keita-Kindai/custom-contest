@@ -22,7 +22,7 @@ import { users } from "./auth-schema";
  */
 
 /**
- * AtCoderの問題カタログ。`packages/domain`の固定JSONから流し込む。
+ * AtCoder固定カタログと手動登録の外部リンク。AtCoder分は固定JSONから流し込む。
  *
  * 問題検索はこのtableを読まない。入力のたびに走る最多の処理なので、
  * DBに当てるとNeonのCU-hoursをここで使い切る（ADR-0010）。
@@ -43,9 +43,18 @@ export const problems = pgTable(
     /** 一覧で桁を揃えるための短い出典表記。`ABC300 C`、`EDPC B`など。 */
     source: varchar("source", { length: 32 }).notNull(),
     tags: text("tags").array().notNull().default([]),
+    origin: varchar("origin", { length: 8 }).$type<"atcoder" | "external">().notNull().default("atcoder"),
+    /** 外部問題だけに付くリンク。serverからこのURLへのfetchは行わない。 */
+    externalUrl: text("external_url"),
+    createdByUserId: text("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("problems_difficulty_idx").on(table.difficulty)],
+  (table) => [
+    index("problems_difficulty_idx").on(table.difficulty),
+    unique("problems_external_url_unique").on(table.externalUrl),
+    index("problems_external_updated_idx").on(table.origin, table.updatedAt.desc()),
+  ],
 );
 
 export const problemSets = pgTable(
@@ -91,6 +100,7 @@ export const problemSetItems = pgTable(
     problemId: varchar("problem_id", { length: 64 })
       .notNull()
       .references(() => problems.problemId, { onDelete: "restrict" }),
+    authorBand: varchar("author_band", { length: 6 }).$type<BandKey>(),
   },
   (table) => [
     primaryKey({ columns: [table.setId, table.position] }),

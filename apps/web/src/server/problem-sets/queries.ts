@@ -1,10 +1,10 @@
 import {
-  type CatalogProblem,
   type DiscoverQuery,
   type LibraryTab,
   type ProblemSet,
   type ProblemSetInput,
   type ProblemSetSummary,
+  type ProblemSetItem,
   type SetSolveStatusMap,
   type SolveStatus,
   type SolveStatusMap,
@@ -248,7 +248,7 @@ export async function getSet(setId: string, viewerId: string | null): Promise<Pr
 }
 
 /** セットに入っている問題を、現在のカタログの値で返す。 */
-async function listProblems(setId: string): Promise<CatalogProblem[]> {
+async function listProblems(setId: string): Promise<ProblemSetItem[]> {
   const rows = await db()
     .select({
       problemId: problems.problemId,
@@ -258,6 +258,8 @@ async function listProblems(setId: string): Promise<CatalogProblem[]> {
       difficulty: problems.difficulty,
       source: problems.source,
       tags: problems.tags,
+      url: problems.externalUrl,
+      authorBand: problemSetItems.authorBand,
     })
     .from(problemSetItems)
     .innerJoin(problems, eq(problems.problemId, problemSetItems.problemId))
@@ -284,7 +286,7 @@ export async function ownerOf(setId: string): Promise<string | null> {
  */
 export async function saveSet(set: ProblemSetInput, ownerId: string): Promise<void> {
   await db().transaction(async (tx) => {
-    await tx
+    const ownedRows = await tx
       .insert(problemSets)
       .values({
         setId: set.setId,
@@ -298,6 +300,7 @@ export async function saveSet(set: ProblemSetInput, ownerId: string): Promise<vo
       })
       .onConflictDoUpdate({
         target: problemSets.setId,
+        setWhere: eq(problemSets.ownerId, ownerId),
         set: {
           title: set.title,
           description: set.description,
@@ -307,7 +310,9 @@ export async function saveSet(set: ProblemSetInput, ownerId: string): Promise<vo
           status: set.status,
           updatedAt: new Date(),
         },
-      });
+      }).returning({ setId: problemSets.setId });
+
+    if (ownedRows.length === 0) throw new Error("セットの持ち主が一致しません。");
 
     await tx.delete(problemSetItems).where(eq(problemSetItems.setId, set.setId));
     if (set.problems.length > 0) {
@@ -316,6 +321,7 @@ export async function saveSet(set: ProblemSetInput, ownerId: string): Promise<vo
           setId: set.setId,
           position,
           problemId: problem.problemId,
+          authorBand: problem.authorBand,
         })),
       );
     }

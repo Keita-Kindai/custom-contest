@@ -50,6 +50,7 @@ function sampleSet(setId: string, visibility: ProblemSet["visibility"]): Problem
       difficulty: null,
       source: `EDPC ${problemId.slice(-1).toUpperCase()}`,
       tags: [],
+      authorBand: null,
     })),
     authorName: "tester",
     likeCount: 0,

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  DIFFICULTY_BANDS,
   SOLVE_STATUS_LABEL,
   VISIBILITY_LABEL,
   difficultyBand,
@@ -246,15 +247,17 @@ export function ProblemTitleLink({
   problemId,
   contestId,
   title,
+  url,
 }: {
   problemId: string;
   contestId: string;
   title: string;
+  url?: string | null;
 }) {
   return (
     <a
       className="problem-title-link"
-      href={`https://atcoder.jp/contests/${contestId}/tasks/${problemId}`}
+      href={url ?? `https://atcoder.jp/contests/${contestId}/tasks/${problemId}`}
       target="_blank"
       rel="noopener noreferrer"
     >
@@ -262,9 +265,17 @@ export function ProblemTitleLink({
       <span className="problem-title-external" aria-hidden="true">
         ↗
       </span>
-      <span className="sr-only">（AtCoderで開く）</span>
+      <span className="sr-only">（{url ? "元サイト" : "AtCoder"}で開く）</span>
     </a>
   );
+}
+
+export function AuthorBandChip({ band }: { band: BandKey | null }) {
+  if (!band) return <span className="ps-section-note">色未設定</span>;
+  const label = DIFFICULTY_BANDS.find((item) => item.key === band)?.label ?? band;
+  return <span className={`author-band-chip ps-diff-${band}`} title="このセットの作成者による任意の難易度色">
+    <span className="ps-diff-dot" aria-hidden="true" />{label}（作者）
+  </span>;
 }
 
 const SOLVE_STATUS_MARK: Record<SolveStatus, string> = {

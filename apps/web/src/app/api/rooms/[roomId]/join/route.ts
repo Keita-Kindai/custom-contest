@@ -4,10 +4,13 @@ import { joinRoom, tick } from "@custom-contest/domain";
 import { errorResponse, isErrorResponse, jsonResponse, parseBody, statusForCode } from "@/server/http";
 import { type RoomRouteContext } from "@/server/rooms/route-helpers";
 import { commandContext, roomStore, snapshotFor } from "@/server/rooms/store";
+import { requireBattleEnabled } from "@/server/feature-gate";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request, { params }: RoomRouteContext) {
+  const gate = requireBattleEnabled();
+  if (gate) return gate;
   const input = await parseBody(request, joinRoomRequestSchema);
   if (isErrorResponse(input)) return input;
   const { roomId } = await params;

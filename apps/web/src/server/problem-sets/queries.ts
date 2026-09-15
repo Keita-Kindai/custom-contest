@@ -119,6 +119,21 @@ function toSummary(row: SummaryRow): ProblemSetSummary {
   };
 }
 
+/**
+ * 検索語を部分一致のLIKEパターンへ変える。
+ *
+ * `%`と`_`はLIKEのワイルドカードなので、利用者が打った文字として扱うにはエスケープが要る。
+ * 素通しにすると二つ壊れる。`50%`を文字として検索できず、`%`一文字で全件一致になり、
+ * さらに`%a%a%a…`のようなパターンで照合そのものを重くできる。
+ *
+ * PostgreSQLのLIKEは既定でバックスラッシュをエスケープ文字として扱うので、
+ * 先にバックスラッシュ自身を二重にしてから、二つのワイルドカードを潰す。
+ * 前後の`%`はこちらが付ける。ここは部分一致の検索だという意味で、利用者の入力ではない。
+ */
+export function likePattern(term: string): string {
+  return `%${term.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
+}
+
 /** Discoverの一覧へ載せてよい条件。下書き・非公開・限定公開は載せない。 */
 const listableInDiscover = and(
   eq(problemSets.visibility, "public"),
@@ -133,7 +148,7 @@ export async function discover(query: DiscoverQuery): Promise<ProblemSetSummary[
   if (query.tags.length > 0) conditions.push(sql`${problemSets.tags} @> ${query.tags}`);
   if (query.bands.length > 0) conditions.push(arrayOverlaps(problemSets.targetBands, query.bands));
   if (query.q) {
-    const term = `%${query.q}%`;
+    const term = likePattern(query.q);
     conditions.push(
       or(ilike(problemSets.title, term), ilike(problemSets.description, term), ilike(users.displayName, term))!,
     );

@@ -4,11 +4,14 @@ import { matchIdParamSchema } from "@custom-contest/contracts";
 import { loadStoredMatch, storedMatchFromState } from "@/server/db/matches";
 import { errorResponse, jsonResponse } from "@/server/http";
 import { advanceAndPersist, roomStore } from "@/server/rooms/store";
+import { requireBattleEnabled } from "@/server/feature-gate";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ matchId: string }> }) {
+  const gate = requireBattleEnabled();
+  if (gate) return gate;
   const parsed = matchIdParamSchema.safeParse((await params).matchId);
   if (!parsed.success) return errorResponse("match_not_found", "Matchが見つかりません。", null, 404);
   const room = roomStore().findRoomByMatch(parsed.data);

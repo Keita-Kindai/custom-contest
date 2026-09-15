@@ -44,6 +44,8 @@ export const apiErrorCodeSchema = z.enum([
   "unauthorized",
   /** セットが無い、または見せてよい相手ではない。区別せず同じ応答を返す。 */
   "set_not_found",
+  /** このデプロイでは公開していない機能。AC Duelの先送りに使う（ADR-0010）。 */
+  "feature_disabled",
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 

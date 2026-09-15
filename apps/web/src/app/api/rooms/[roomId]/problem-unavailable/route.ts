@@ -4,8 +4,11 @@ import { reportProblemUnavailable } from "@custom-contest/domain";
 import { isErrorResponse, parseBody } from "@/server/http";
 import { commandFailure, mutationSnapshot, type RoomRouteContext } from "@/server/rooms/route-helpers";
 import { accessRoom, commandContext } from "@/server/rooms/store";
+import { requireBattleEnabled } from "@/server/feature-gate";
 
 export async function POST(request: Request, { params }: RoomRouteContext) {
+  const gate = requireBattleEnabled();
+  if (gate) return gate;
   const input = await parseBody(request, problemUnavailableRequestSchema);
   if (isErrorResponse(input)) return input;
   const { roomId } = await params;

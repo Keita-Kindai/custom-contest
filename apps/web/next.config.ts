@@ -7,8 +7,9 @@ const nextConfig: NextConfig = {
   /**
    * 対戦（AC Duel）を後回しにするあいだ、入口を精進側へ寄せる。
    *
-   * 画面のファイルは`src/app/battle/`と`src/app/page.tsx`に残してあり、消していない。
-   * 戻すときはこの`redirects()`を外すだけでよい。
+   * 画面のファイルは`src/app/battle/`に残し、旧トップは
+   * `src/app/_components/duel-home.tsx`へ保存してある。
+   * 精進側のトップLPは公開するので、`/`は転送しない。
    *
    * `permanent: false`（307）にしてある。恒久リダイレクトはブラウザーが覚えてしまい、
    * 対戦を戻したあとも古い転送が効き続けるため。
@@ -40,7 +41,6 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
-      { source: "/", destination: "/discover", permanent: false },
       { source: "/battle/:path*", destination: "/discover", permanent: false },
     ];
   },

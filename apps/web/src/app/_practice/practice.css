@@ -118,6 +118,39 @@
   margin-left: auto;
 }
 
+@media (max-width: 600px) {
+  .practice-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .practice-brand {
+    grid-column: 1;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .practice-header-end {
+    grid-column: 2;
+    margin-left: 0;
+  }
+
+  .practice-nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .practice-nav-link {
+    padding: var(--space-2) var(--space-1);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+}
+
 .practice-account-button {
   padding: var(--space-2) var(--space-4);
   border: 1px solid var(--color-rule-strong);

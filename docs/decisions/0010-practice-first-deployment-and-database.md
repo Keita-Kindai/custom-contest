@@ -125,6 +125,27 @@ Room stateがprocess内にある限り、対戦側はVercelに載らない。そ
 - Room stateをNeon（またはRedis）へ移し、Vercelに寄せる。1秒ごとのpollingがDBを叩く形になるので、pollingの間隔か方式を見直すことになる。
 - 常駐processのhostへ月数ドル払う。「完全無料」を諦める代わりに、ADR-0003の設計をそのまま使える。
 
+### 対戦APIはサーバー側で閉じる
+
+精進側だけを公開するあいだ、`/battle/*`の画面は`next.config.ts`の`redirects()`で`/discover`へ送る。
+しかしこの転送は画面にしか効かず、`/api/*`はそのまま残る。実際に`POST /api/rooms`はログイン不要でRoomを作れ、
+userscriptとMatch取得のAPIも動いたままだった。**画面を隠すことと機能を閉じることは別である。**
+
+そこで公開している機能の境界を`apps/web/src/server/feature-gate.ts`に置き、対戦・Match・userscript・Fake判定の
+route handlerの先頭で確かめる。閉じているときは404を返す。403ではなく404にするのは、どの機能が眠っているかを
+応答から読み取れないようにするため。
+
+middlewareではなくhandlerの中で確かめるのは、headerの細工でmiddlewareを迂回する種類の攻撃を前提にしても
+境界が残るようにするためである。
+
+- `CUSTOM_CONTEST_ENABLE_BATTLE=1`で対戦を開ける。既定は`NODE_ENV=production`なら閉じる。
+- Fake判定は`VERCEL_ENV=production`のとき、環境変数に何が入っていても無効にする。ここが有効な本番は、
+  誰でもACを名乗れる本番と同じ意味になる。`VERCEL_ENV`はVercelが入れる値で、このリポジトリの設定では
+  上書きできない。
+
+対戦を戻すときは、このフラグを立てる前に、Roomの外部状態ストア、本人確認と判定の信頼境界、濫用対策を
+設計し直すこと。現在のRoomはprocess内のMapなので、instanceが複数になると対戦がそもそも成立しない。
+
 ## Consequences
 
 - ADR-0009の「Fly.io（またはRender）+ Neon」という公開先の記述は、Fly.ioに無料枠がなくなった時点で古い。DBのNeonは残り、hostの部分だけが変わる。このADRが確定したら0009へ追記する。
@@ -134,11 +155,14 @@ Room stateがprocess内にある限り、対戦側はVercelに載らない。そ
 - 手順1で公開したあと手順2でDBへ移すとき、利用者のlocalStorageにあるセットは自動ではアカウントへ紐づかない。移行の導線（「この端末のセットをアカウントへ取り込む」）を別途用意することになる。ADR-0009にも同じ課題が書かれている。
 - Neonのscale to zeroは無効にできない。5分空いたあとの最初のqueryが遅れることを、画面の読み込み表示で吸収する必要がある。
 - Neonのinstant restoreは6時間ぶんしかない。誤って消したデータを翌日に戻すことはできないので、定期的な`pg_dump`を運用に入れる。
+- 対戦を戻す段では、`CUSTOM_CONTEST_ENABLE_BATTLE`を立てるだけでは足りない。Room stateの置き場所を決め直すまで、フラグは開けない。
 
 ## Verification
 
 - Vercelへ配備した`/discover`、`/sets/new`、`/library`が、ローカルと同じ内容を返す。
 - `GET /api/problems/search?q=EDPC`が配備先で200を返し、件数がローカルと一致する。
+- 配備先で`POST /api/rooms`、`GET /api/matches/<id>`、`POST /api/userscript/link`、`POST /api/dev/fake-evidence`がいずれも404を返す。
+- 配備先の`GET /api/health`が`fakeEvidenceEnabled: false`を返す。
 - 配備先で問題セットを作成し、別の端末から同じURLを開くと**見えない**（localStorage段階の想定どおりの挙動であることの確認）。
 - Vercelのusage画面で、1週間運用したあとのFunction実行回数とData Transferが無料枠の10%を超えない。
 - 手順2に進むとき: Neonの空DBへ`0001`と`0002_auth`のmigrationを適用でき、再実行してもschemaが壊れない。

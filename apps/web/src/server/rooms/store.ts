@@ -20,13 +20,14 @@ import {
   type RoomState,
 } from "@custom-contest/domain";
 
+import { fakeEvidenceEnabled } from "@/server/feature-gate";
+
 import { saveStoredMatch, storedMatchFromState } from "../db/matches";
 
 type StoreGlobal = typeof globalThis & { __customContestRoomStore?: RoomStore };
 
-export function fakeEvidenceEnabled(): boolean {
-  return process.env.NODE_ENV === "test" || process.env.CUSTOM_CONTEST_ENABLE_FAKE_EVIDENCE === "1";
-}
+// 判定は`feature-gate.ts`が正本。ここは既存の呼び出し元のために名前を通すだけ。
+export { fakeEvidenceEnabled } from "@/server/feature-gate";
 
 export function commandContext(now = Date.now()): CommandContext {
   return { now, random: cryptoRandomSource, fakeEvidenceEnabled: fakeEvidenceEnabled() };

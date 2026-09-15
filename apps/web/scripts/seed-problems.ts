@@ -1,6 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { Client } from "pg";
 
+// type strippingは拡張子付きの相対importしか解決できないため、`.ts`まで書く。
+import { databaseUrl } from "../src/server/db/ssl.ts";
+
 /**
  * 問題カタログを`problems` tableへ流し込む（ADR-0011）。
  *
@@ -36,7 +39,8 @@ const CATALOG_URL = new URL("../../../packages/domain/src/problems/catalog.json"
 const BATCH_SIZE = 500;
 const COLUMNS = 7;
 
-const connectionString = process.env.DATABASE_URL?.trim();
+// `migrate.ts`と同じ理由で、生のDATABASE_URLではなくTLSを固定した値を使う。
+const connectionString = databaseUrl();
 if (!connectionString) {
   console.error("DATABASE_URLがありません。apps/web/.env.localを設定してください。");
   process.exitCode = 1;

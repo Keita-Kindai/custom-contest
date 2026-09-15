@@ -2,6 +2,9 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Client } from "pg";
 
+// type strippingは拡張子付きの相対importしか解決できないため、`.ts`まで書く。
+import { databaseUrl } from "../src/server/db/ssl.ts";
+
 /** 適用する順序。同じSQLを再実行しても安全な内容だけを並べる。 */
 const MIGRATIONS = [
   "0001_match_results",
@@ -10,7 +13,9 @@ const MIGRATIONS = [
   "0004_widen_problem_index",
 ] as const;
 
-const connectionString = process.env.DATABASE_URL?.trim();
+// 生のDATABASE_URLを使わない。migrationはDDL権限を持つ唯一の接続なので、
+// アプリ本体と同じverify-fullのTLSで繋ぐ。
+const connectionString = databaseUrl();
 if (!connectionString) {
   console.error("DATABASE_URLがありません。apps/web/.env.localを設定してください。");
   process.exitCode = 1;

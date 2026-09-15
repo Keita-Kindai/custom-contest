@@ -14,6 +14,30 @@ const nextConfig: NextConfig = {
    * 対戦を戻したあとも古い転送が効き続けるため。
    * userscriptが叩く`/api/*`は転送しない。
    */
+  /**
+   * 全応答へ付ける最低限の防御。
+   *
+   * `Referrer-Policy`は、限定公開セットのURLが外部サイトのアクセスログへ流れるのを防ぐ。
+   * 個々のリンクには`rel="noreferrer"`を付けてあるが、付け忘れた1本で同じ穴が開くため、
+   * 既定をこちらで決めておく。
+   *
+   * Content-Security-Policyはまだ入れていない。`layout.tsx`のテーマ用inline scriptに
+   * nonceまたはhashが要り、その作業はここだけでは終わらないため、別に扱う。
+   */
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // 他サイトのiframeへ入れさせない。clickjackingの対策。
+          { key: "X-Frame-Options", value: "DENY" },
+        ],
+      },
+    ];
+  },
+
   async redirects() {
     return [
       { source: "/", destination: "/discover", permanent: false },

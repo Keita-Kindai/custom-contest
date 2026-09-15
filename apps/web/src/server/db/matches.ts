@@ -33,7 +33,17 @@ export async function deleteExpiredMatches(now = new Date()): Promise<number> {
   return result.rowCount ?? 0;
 }
 
-async function maybeDeleteExpiredMatches(now = Date.now()): Promise<void> {
+/**
+ * 保存期間を過ぎたMatchを、間隔を空けて消す。
+ *
+ * `/api/health`からは呼ばない。healthは未認証で叩けるので、そこから書き込みを起こすと、
+ * 誰でも好きなだけDELETEを走らせられる。間隔の記録は`globalThis`にあり、instanceごとに
+ * 別なので、instanceが増えるほど間隔の意味も薄くなる。
+ *
+ * 呼ぶのはMatchを保存する経路だけにする。つまりMatchが増えるときにだけ古い行が減る。
+ * 対戦を公開する段では、ここをVercel Cronのような定期実行へ移すこと。
+ */
+export async function maybeDeleteExpiredMatches(now = Date.now()): Promise<void> {
   const state = globalThis as RetentionGlobal;
   if (
     state.__customContestRetentionCleanupAt !== undefined &&
@@ -135,7 +145,6 @@ export async function databaseHealth(): Promise<DatabaseHealth> {
         fix: "pnpm db:migrateを実行してください。",
       };
     }
-    await maybeDeleteExpiredMatches();
     return { reachable: true, migrated: true, message: "PostgreSQLへ接続済みです。", fix: null };
   } catch (error) {
     const missingTable = error instanceof Error && /custom_contest_migrations/.test(error.message);
@@ -191,7 +200,7 @@ export async function saveStoredMatch(value: StoredMatchResponse): Promise<void>
 export async function loadStoredMatch(matchId: string): Promise<StoredMatchResponse | null> {
   const db = getDb();
   if (!db) throw new Error("DATABASE_URL is not configured");
-  await maybeDeleteExpiredMatches();
+  // 読み取りから削除を起こさない。期限切れの行はこの下の`expiresAt`の確認で見せない。
   const rows = await db.select().from(matchResults).where(eq(matchResults.matchId, matchId)).limit(1);
   const row = rows[0];
   if (!row || row.expiresAt.getTime() <= Date.now()) return null;

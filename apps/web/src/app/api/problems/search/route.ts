@@ -6,6 +6,18 @@ import { errorResponse, jsonResponse } from "@/server/http";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * カタログは`packages/domain`の固定JSONで、デプロイのあいだ変わらない。
+ * 応答はクエリ文字列だけで決まるので、そのままCDNへ預けられる。
+ *
+ * 預けないと、1 requestごとに約3,300問をすべて走査することになる。未認証で叩けるため、
+ * 現状ここは精進側でいちばん安く計算資源を使わせる経路になっている。
+ * カタログが変わるのはdeployのときだけで、deployはCDNのcacheを入れ替える。
+ */
+const CACHE_HEADERS = {
+  "cache-control": "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400",
+};
+
 function optionalInt(value: string | null): number | null {
   if (value === null || value.trim() === "") return null;
   const parsed = Number(value);
@@ -29,5 +41,5 @@ export async function GET(request: Request) {
   if (!parsed.success) {
     return errorResponse("invalid_request", "検索条件を確認できませんでした。", null, 400);
   }
-  return jsonResponse(searchCatalog(parsed.data));
+  return jsonResponse(searchCatalog(parsed.data), 200, CACHE_HEADERS);
 }

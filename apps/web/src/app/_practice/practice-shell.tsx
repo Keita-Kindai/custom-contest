@@ -43,7 +43,7 @@ function PracticeShellFrame({
   return (
     <div className="practice-shell" data-skin="practice">
       <header className="practice-header">
-        <Link className="practice-brand" href="/discover">
+        <Link className="practice-brand" href="/">
           <span className="practice-brand-mark" aria-hidden="true" />
           Custom Contest
         </Link>

@@ -11,12 +11,17 @@ import {
   userscriptOptions,
 } from "@/server/http";
 import { advanceAndPersist, commandContext, roomStore } from "@/server/rooms/store";
+import { requireBattleEnabled } from "@/server/feature-gate";
 
 export function OPTIONS() {
+  const gate = requireBattleEnabled();
+  if (gate) return gate;
   return userscriptOptions();
 }
 
 export async function POST(request: Request) {
+  const gate = requireBattleEnabled();
+  if (gate) return gate;
   const input = await parseBody(request, evidenceRequestSchema);
   if (isErrorResponse(input)) return input;
   const found = roomStore().findParticipantByScriptToken(input.scriptToken);

@@ -3,10 +3,13 @@ import { submitEvidence, tick } from "@custom-contest/domain";
 
 import { errorResponse, isErrorResponse, jsonResponse, parseBody, statusForCode } from "@/server/http";
 import { commandContext, fakeEvidenceEnabled, roomStore, snapshotFor } from "@/server/rooms/store";
+import { requireBattleEnabled } from "@/server/feature-gate";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const gate = requireBattleEnabled();
+  if (gate) return gate;
   if (!fakeEvidenceEnabled()) {
     return errorResponse("fake_evidence_disabled", "Fake判定はこのサーバーでは無効です。", null, 404);
   }

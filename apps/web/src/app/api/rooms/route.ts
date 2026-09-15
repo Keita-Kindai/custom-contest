@@ -3,10 +3,13 @@ import { createRoomRequestSchema } from "@custom-contest/contracts";
 import { databaseHealth } from "@/server/db/matches";
 import { errorResponse, isErrorResponse, jsonResponse, parseBody } from "@/server/http";
 import { commandContext, roomStore, snapshotFor } from "@/server/rooms/store";
+import { requireBattleEnabled } from "@/server/feature-gate";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const gate = requireBattleEnabled();
+  if (gate) return gate;
   const input = await parseBody(request, createRoomRequestSchema);
   if (isErrorResponse(input)) return input;
   const database = await databaseHealth();

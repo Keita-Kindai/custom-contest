@@ -99,6 +99,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
   const [externalUrl, setExternalUrl] = useState("");
   const [externalTerm, setExternalTerm] = useState("");
   const [externalResults, setExternalResults] = useState<ProblemSearchResponse | null>(null);
+  const [externalPage, setExternalPage] = useState(1);
   const [externalBusy, setExternalBusy] = useState(false);
   const [externalError, setExternalError] = useState<string | null>(null);
 
@@ -194,14 +195,15 @@ export function SetEditorView({ setId }: { setId?: string }) {
     ));
   }
 
-  async function searchExternal() {
+  async function searchExternal(nextPage = externalPage) {
     setExternalBusy(true);
     setExternalError(null);
     try {
-      const params = new URLSearchParams({ q: externalTerm, limit: "20", offset: "0" });
+      const params = new URLSearchParams({ q: externalTerm, limit: "20", offset: String((nextPage - 1) * 20) });
       const response = await fetch(`/api/problems/external?${params}`, { cache: "no-store" });
       if (!response.ok) throw new Error("外部問題を検索できませんでした。");
       setExternalResults(await response.json() as ProblemSearchResponse);
+      setExternalPage(nextPage);
     } catch (error) {
       setExternalError(error instanceof Error ? error.message : "外部問題を検索できませんでした。");
     } finally {
@@ -226,7 +228,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
       addProblem(registered);
       setExternalTitle("");
       setExternalUrl("");
-      await searchExternal();
+      await searchExternal(1);
     } catch (error) {
       setExternalError(error instanceof Error ? error.message : "外部問題を登録できませんでした。");
     } finally {
@@ -582,13 +584,13 @@ export function SetEditorView({ setId }: { setId?: string }) {
               <input className="practice-input" id="external-problem-url" type="url" value={externalUrl} maxLength={2048} onChange={(event) => setExternalUrl(event.target.value)} placeholder="https://example.org/problems/123" required />
               <button className="practice-button is-primary" type="submit" disabled={externalBusy}>登録してセットに追加</button>
             </form>
-            <form className="external-search-form" onSubmit={(event) => { event.preventDefault(); void searchExternal(); }}>
+            <form className="external-search-form" onSubmit={(event) => { event.preventDefault(); void searchExternal(1); }}>
               <label className="ps-field-label" htmlFor="external-problem-search">登録済みの外部問題を探す</label>
               <input className="practice-input" id="external-problem-search" type="search" value={externalTerm} maxLength={80} onChange={(event) => setExternalTerm(event.target.value)} placeholder="題名またはサイト名" />
               <button className="practice-button" type="submit" disabled={externalBusy}>検索</button>
             </form>
             {externalError && <p className="practice-notice">{externalError}</p>}
-            {externalResults && <p className="ps-field-help">{externalResults.total}件が一致。最新20件を表示します。</p>}
+            {externalResults && <p className="ps-field-help">{externalResults.total}件が一致。{externalPage}ページ目を表示します。</p>}
             <div className="search-results">
               {externalResults?.problems.map((problem) => (
                 <div className="search-row" key={problem.problemId}>
@@ -598,6 +600,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
                 </div>
               ))}
             </div>
+            {externalResults && <Pager page={externalPage} pageCount={Math.min(51, Math.max(1, Math.ceil(externalResults.total / 20)))} onChange={(next) => void searchExternal(next)} />}
           </section>
         </div>
 

@@ -12,6 +12,7 @@ import {
 } from "@custom-contest/contracts";
 
 import {
+  AuthorBandChip,
   DifficultyDot,
   DifficultyRangeChip,
   EmptyState,
@@ -111,7 +112,7 @@ export function SetDetailView({ setId }: { setId: string }) {
 
           <div className="ps-section-heading">
             <h2>収録問題</h2>
-            <span className="ps-section-note">問題名を押すとAtCoderで開きます</span>
+            <span className="ps-section-note">問題名を押すと元サイトで開きます</span>
           </div>
 
           {set.problems.length === 0 ? (
@@ -128,10 +129,11 @@ export function SetDetailView({ setId }: { setId: string }) {
                         problemId={problem.problemId}
                         contestId={problem.contestId}
                         title={problem.title}
+                        url={problem.url}
                       />
                     </span>
                     <span className="problem-source">{problem.source}</span>
-                    <DifficultyDot difficulty={problem.difficulty} />
+                    {problem.url ? <AuthorBandChip band={problem.authorBand} /> : <DifficultyDot difficulty={problem.difficulty} />}
                     <SolveStatusControl
                       status={status}
                       problemTitle={problem.title}

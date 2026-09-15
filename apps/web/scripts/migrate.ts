@@ -11,6 +11,7 @@ const MIGRATIONS = [
   "0002_auth",
   "0003_problem_sets",
   "0004_widen_problem_index",
+  "0005_external_problem_links",
 ] as const;
 
 // 生のDATABASE_URLを使わない。migrationはDDL権限を持つ唯一の接続なので、

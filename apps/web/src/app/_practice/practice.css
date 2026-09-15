@@ -974,6 +974,37 @@
   background: var(--color-surface-0);
 }
 
+.external-problem-form,
+.external-search-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.external-search-form {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-rule);
+}
+
+.external-problem-form .practice-button,
+.external-search-form .practice-button {
+  align-self: flex-start;
+}
+
+.author-band-picker .practice-select {
+  min-width: 72px;
+  max-width: 96px;
+}
+
+.author-band-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--difficulty-color, var(--color-ink-2));
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 /*
  * 落とす位置は行ではなく行と行のすきまで示す。
  * 行そのものを塗ると「その行と入れ替わる」ように見えるが、実際は差し込みで並び替える。

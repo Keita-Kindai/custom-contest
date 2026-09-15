@@ -18,6 +18,8 @@ export const catalogProblemSchema = z.object({
   /** 一覧で桁を揃えるための短い出典表記。`ABC300 C`、`EDPC B`など。 */
   source: z.string().min(1),
   tags: z.array(z.string()),
+  /** 外部登録問題は元サイトのHTTPS URL。固定AtCoderカタログでは省略。 */
+  url: z.string().url().regex(/^https:\/\//).nullable().optional(),
 });
 export type CatalogProblem = z.infer<typeof catalogProblemSchema>;
 
@@ -62,10 +64,6 @@ export type ProblemSetStatus = z.infer<typeof problemSetStatusSchema>;
 
 export const problemSetIdSchema = z.string().regex(/^ps_[0-9a-z]{10}$/);
 
-/** セットに入っている1問。カタログからコピーして保存する。 */
-export const problemSetItemSchema = catalogProblemSchema;
-export type ProblemSetItem = z.infer<typeof problemSetItemSchema>;
-
 /**
  * 1セットに入れられる問題数の上限。
  * 一括追加は1ページ最大100件を返すので、作成画面はこの値で打ち切る必要がある。
@@ -75,6 +73,12 @@ export const MAX_PROBLEMS_PER_SET = 50;
 /** 想定者に使うrating色のkey。DIFFICULTY_BANDSと同じ段。 */
 export const bandKeySchema = z.enum(["gray", "brown", "green", "cyan", "blue", "yellow", "orange", "red"]);
 export type BandKey = z.infer<typeof bandKeySchema>;
+
+/** 難易度の推定は問題の属性ではなく、このセット内の1問への作者の任意設定。 */
+export const problemSetItemSchema = catalogProblemSchema.extend({
+  authorBand: bandKeySchema.nullable().default(null),
+});
+export type ProblemSetItem = z.infer<typeof problemSetItemSchema>;
 
 export const problemSetSchema = z.object({
   setId: problemSetIdSchema,
@@ -197,6 +201,19 @@ export const problemSearchResponseSchema = z.object({
   problems: z.array(catalogProblemSchema),
 });
 export type ProblemSearchResponse = z.infer<typeof problemSearchResponseSchema>;
+
+/** 外部問題の登録と明示的な検索。元サイトへserver-side fetchはしない。 */
+export const externalProblemInputSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  url: z.string().trim().url().max(2048),
+});
+export type ExternalProblemInput = z.infer<typeof externalProblemInputSchema>;
+
+export const externalProblemSearchQuerySchema = z.object({
+  q: z.string().trim().max(80).default(""),
+  limit: z.number().int().min(1).max(20).default(10),
+  offset: z.number().int().min(0).max(1000).default(0),
+});
 
 export function difficultyRangeOf(
   problems: readonly ProblemSetItem[],

@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS problem_sets (
   owner_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title varchar(60) NOT NULL,
   description varchar(400) NOT NULL DEFAULT '',
-  -- 事前定義の12種から最大6個。自由入力は受け付けない。
+  -- 最大6個のセットタグ。自由入力の内容はAPI契約で検証する。
   tags text[] NOT NULL DEFAULT '{}',
   -- 作成者が想定した対象のrating色。押した段だけを持つ。
   target_bands text[] NOT NULL DEFAULT '{}',

@@ -23,7 +23,7 @@ export const catalogProblemSchema = z.object({
 });
 export type CatalogProblem = z.infer<typeof catalogProblemSchema>;
 
-/** 押して有効化する事前定義タグ。自由入力は受け付けない。 */
+/** 入力欄の初期候補。利用者はこれ以外も追加できる。 */
 export const PROBLEM_SET_TAGS = [
   "DP",
   "グラフ",
@@ -38,8 +38,24 @@ export const PROBLEM_SET_TAGS = [
   "上級",
   "短時間",
 ] as const;
-export const problemSetTagSchema = z.enum(PROBLEM_SET_TAGS);
+export const problemSetTagSchema = z.string().transform((value, context) => {
+  const normalized = value.normalize("NFKC").trim();
+  if (normalized.length < 1 || normalized.length > 24 || /[\u0000-\u001f\u007f]/u.test(normalized)) {
+    context.addIssue({ code: "custom", message: "タグは制御文字を含まない1〜24文字にしてください。" });
+    return z.NEVER;
+  }
+  return normalized;
+});
 export type ProblemSetTag = z.infer<typeof problemSetTagSchema>;
+
+export const problemSetTagsSchema = z.array(problemSetTagSchema).max(6).superRefine((tags, context) => {
+  const seen = new Set<string>();
+  tags.forEach((tag, index) => {
+    const key = tag.toLocaleLowerCase();
+    if (seen.has(key)) context.addIssue({ code: "custom", path: [index], message: "同じタグを2回追加できません。" });
+    seen.add(key);
+  });
+});
 
 /** 公開範囲。実際のaccess制御はDBと認証の導入まで効かない。 */
 export const visibilitySchema = z.enum(["public", "unlisted", "private"]);
@@ -84,7 +100,7 @@ export const problemSetSchema = z.object({
   setId: problemSetIdSchema,
   title: z.string().trim().min(1).max(60),
   description: z.string().trim().max(400),
-  tags: z.array(problemSetTagSchema).max(6),
+  tags: problemSetTagsSchema,
   visibility: visibilitySchema,
   status: problemSetStatusSchema,
   problems: z.array(problemSetItemSchema).max(MAX_PROBLEMS_PER_SET),
@@ -159,7 +175,7 @@ export const PROBLEM_SET_SORT_LABEL: Record<ProblemSetSort, string> = {
 
 export const discoverQuerySchema = z.object({
   q: z.string().trim().max(80).default(""),
-  tags: z.array(problemSetTagSchema).default([]),
+  tags: z.array(problemSetTagSchema).max(6).default([]),
   /** 作成者が選んだ想定者の色。1つでも一致すればそのセットを残す。 */
   bands: z.array(bandKeySchema).max(8).default([]),
   sort: problemSetSortSchema.default("popular"),

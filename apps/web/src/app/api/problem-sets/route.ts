@@ -1,4 +1,4 @@
-import { discoverQuerySchema, problemSetTagSchema, bandKeySchema, problemSetSortSchema } from "@custom-contest/contracts";
+import { discoverQuerySchema, bandKeySchema, problemSetSortSchema } from "@custom-contest/contracts";
 
 import { errorResponse, jsonResponse } from "@/server/http";
 import { handleQueryError } from "@/server/problem-sets/route-helpers";
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const parsed = discoverQuerySchema.safeParse({
     q: params.get("q") ?? "",
-    tags: params.getAll("tags").filter((tag) => problemSetTagSchema.safeParse(tag).success),
+    tags: params.getAll("tags"),
     bands: params.getAll("bands").filter((band) => bandKeySchema.safeParse(band).success),
     sort: problemSetSortSchema.safeParse(params.get("sort")).success ? params.get("sort") : "popular",
     difficultyMin: optionalInt(params.get("difficultyMin")),

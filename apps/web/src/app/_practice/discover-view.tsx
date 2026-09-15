@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   DIFFICULTY_BANDS,
@@ -17,13 +17,12 @@ import { SetGridSkeleton } from "./components/skeletons";
 import { problemSetRepository } from "./data/repository";
 import { usePracticeData } from "./use-practice-data";
 
-/** Discoverで前に出すタグ。全タグはフィルターから選べる。 */
-const QUICK_TAGS: ProblemSetTag[] = ["DP", "グラフ", "数学", "典型90", "初級", "短時間"];
-
 export function DiscoverView() {
   const [draftQuery, setDraftQuery] = useState("");
   const [keyword, setKeyword] = useState("");
   const [tags, setTags] = useState<ProblemSetTag[]>([]);
+  const [suggestedTags, setSuggestedTags] = useState<ProblemSetTag[]>([]);
+  const [showAllTags, setShowAllTags] = useState(false);
   const [bands, setBands] = useState<BandKey[]>([]);
   const [sort, setSort] = useState<ProblemSetSort>("popular");
 
@@ -38,6 +37,15 @@ export function DiscoverView() {
   const results = usePracticeData(() => problemSetRepository.discover(query), [query]);
   const fresh = usePracticeData(() => problemSetRepository.featured("new"), []);
   const loved = usePracticeData(() => problemSetRepository.featured("liked"), []);
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/problem-sets/tags", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() as Promise<{ tags: string[] }> : Promise.reject())
+      .then((body) => { if (active) setSuggestedTags(body.tags); })
+      .catch(() => { if (active) setSuggestedTags([]); });
+    return () => { active = false; };
+  }, []);
 
   function toggleTag(tag: ProblemSetTag) {
     setTags((current) => (current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]));
@@ -91,9 +99,12 @@ export function DiscoverView() {
 
         <div className="filter-tags">
           <TagPill tag="すべて" selected={tags.length === 0} onToggle={() => setTags([])} />
-          {QUICK_TAGS.map((tag) => (
+          {[...new Set([...tags, ...suggestedTags.slice(0, showAllTags ? 30 : 6)])].map((tag) => (
             <TagPill key={tag} tag={tag} selected={tags.includes(tag)} onToggle={() => toggleTag(tag)} />
           ))}
+          {suggestedTags.length > 6 && (
+            <button className="tag-pill is-add" type="button" aria-expanded={showAllTags} onClick={() => setShowAllTags((value) => !value)}>{showAllTags ? "候補を閉じる" : "タグ候補をもっと見る"}</button>
+          )}
         </div>
 
         <div className="band-filter">

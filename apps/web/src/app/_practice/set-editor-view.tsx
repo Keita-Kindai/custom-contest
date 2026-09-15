@@ -15,6 +15,7 @@ import {
   VISIBILITY_HELP,
   VISIBILITY_LABEL,
   difficultyRangeOf,
+  problemSetTagSchema,
   problemSetInputSchema,
   visibilitySchema,
   type BandKey,
@@ -70,6 +71,10 @@ export function SetEditorView({ setId }: { setId?: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<ProblemSetTag[]>([]);
+  const [tagDraft, setTagDraft] = useState("");
+  const [addingTag, setAddingTag] = useState(false);
+  const [tagFilter, setTagFilter] = useState("");
+  const [publicTags, setPublicTags] = useState<ProblemSetTag[]>([]);
   const [targetBands, setTargetBands] = useState<BandKey[]>([]);
   const [visibility, setVisibility] = useState<Visibility | null>(null);
   const [problems, setProblems] = useState<ProblemSetItem[]>([]);
@@ -102,6 +107,15 @@ export function SetEditorView({ setId }: { setId?: string }) {
   const [externalPage, setExternalPage] = useState(1);
   const [externalBusy, setExternalBusy] = useState(false);
   const [externalError, setExternalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/problem-sets/tags", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() as Promise<{ tags: string[] }> : Promise.reject())
+      .then((body) => { if (active) setPublicTags(body.tags); })
+      .catch(() => { if (active) setPublicTags([]); });
+    return () => { active = false; };
+  }, []);
 
   // 編集時は既存の内容を初期値にする。
   useEffect(() => {
@@ -154,6 +168,26 @@ export function SetEditorView({ setId }: { setId?: string }) {
     setTags((current) =>
       current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag].slice(0, 6),
     );
+  }
+
+  function addCustomTag() {
+    const parsed = problemSetTagSchema.safeParse(tagDraft);
+    if (!parsed.success) {
+      setNotice("タグは制御文字を含まない1〜24文字にしてください。");
+      return;
+    }
+    if (tags.some((tag) => tag.toLocaleLowerCase() === parsed.data.toLocaleLowerCase())) {
+      setNotice("同じタグはすでに追加されています。");
+      return;
+    }
+    if (tags.length >= 6) {
+      setNotice("タグは最大6個です。");
+      return;
+    }
+    setTags((current) => [...current, parsed.data]);
+    setTagDraft("");
+    setAddingTag(false);
+    setNotice(null);
   }
 
   function toggleBand(key: BandKey) {
@@ -437,13 +471,24 @@ export function SetEditorView({ setId }: { setId?: string }) {
           </section>
 
           <section className="create-block" id="set-tags">
-            <h2>タグ（押して有効化）</h2>
+            <h2>セットのタグ</h2>
+            <input className="practice-input" type="search" value={tagFilter} maxLength={24} onChange={(event) => setTagFilter(event.target.value)} placeholder="候補を絞り込む" aria-label="タグ候補を絞り込む" />
             <div className="filter-tags">
-              {PROBLEM_SET_TAGS.map((tag) => (
+              {[...new Set([...tags, ...publicTags, ...PROBLEM_SET_TAGS])]
+                .filter((tag) => tags.includes(tag) || tag.toLocaleLowerCase().includes(tagFilter.normalize("NFKC").trim().toLocaleLowerCase()))
+                .slice(0, 12).map((tag) => (
                 <TagPill key={tag} tag={tag} selected={tags.includes(tag)} onToggle={() => toggleTag(tag)} />
               ))}
+              <button className="tag-pill is-add" type="button" aria-expanded={addingTag} aria-controls="custom-tag-form" onClick={() => setAddingTag((value) => !value)}>＋ タグ</button>
             </div>
-            <p className="ps-field-help">事前に用意したタグから選びます。最大6個。</p>
+            {addingTag && (
+              <form id="custom-tag-form" className="custom-tag-form" onSubmit={(event) => { event.preventDefault(); addCustomTag(); }}>
+                <label className="ps-field-label" htmlFor="custom-tag-input">新しいタグ</label>
+                <input className="practice-input" id="custom-tag-input" value={tagDraft} maxLength={24} onChange={(event) => setTagDraft(event.target.value)} placeholder="例: ICPC 予選" />
+                <button className="practice-button is-small" type="submit">追加</button>
+              </form>
+            )}
+            <p className="ps-field-help">最大6個。公開済みの公開セットで使われたタグも候補に出ます。</p>
           </section>
 
           <section className="create-block" id="set-bands">

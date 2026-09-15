@@ -67,7 +67,7 @@ export const problemSets = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 60 }).notNull(),
     description: varchar("description", { length: 400 }).notNull().default(""),
-    /** 事前定義の12種から最大6個。CHECK制約はSQL側にある。 */
+    /** 自由入力のセットタグ、最大6個。個数のCHECK制約はSQL側にある。 */
     tags: text("tags").array().$type<ProblemSetTag[]>().notNull().default([]),
     /** 作成者が想定した対象のrating色。押した段だけを持つ。 */
     targetBands: text("target_bands").array().$type<BandKey[]>().notNull().default([]),

@@ -85,12 +85,13 @@ export function TagPill({
   selected?: boolean;
   onToggle?: () => void;
 }) {
-  if (!onToggle) return <span className="tag-pill">{tag}</span>;
+  if (!onToggle) return <span className="tag-pill" title={tag}>{tag}</span>;
   return (
     <button
       type="button"
       className={`tag-pill is-button${selected ? " is-selected" : ""}`}
       aria-pressed={selected}
+      title={tag}
       onClick={onToggle}
     >
       {selected && <span aria-hidden="true">✓ </span>}
@@ -194,7 +195,7 @@ export function SetCard({
         ) : (
           <>
             {tags.shown.map((tag) => (
-              <span className="tag-pill is-small" key={tag}>
+              <span className="tag-pill is-small" key={tag} title={tag}>
                 {tag}
               </span>
             ))}

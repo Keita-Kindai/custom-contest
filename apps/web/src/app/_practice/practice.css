@@ -340,6 +340,30 @@
   font-weight: 700;
 }
 
+.tag-pill.is-add {
+  cursor: pointer;
+  font-family: inherit;
+  border-style: dashed;
+  color: var(--color-ink-2);
+}
+
+.custom-tag-form {
+  display: flex;
+  align-items: end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.custom-tag-form .practice-input {
+  width: min(100%, 240px);
+}
+
+.filter-tags .tag-pill {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .ps-difficulty {
   display: inline-flex;
   align-items: center;

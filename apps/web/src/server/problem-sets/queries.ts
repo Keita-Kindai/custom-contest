@@ -150,7 +150,12 @@ export async function discover(query: DiscoverQuery): Promise<ProblemSetSummary[
   if (query.q) {
     const term = likePattern(query.q);
     conditions.push(
-      or(ilike(problemSets.title, term), ilike(problemSets.description, term), ilike(users.displayName, term))!,
+      or(
+        ilike(problemSets.title, term),
+        ilike(problemSets.description, term),
+        ilike(users.displayName, term),
+        sql`${problemSets.tags}::text ILIKE ${term}`,
+      )!,
     );
   }
 
@@ -193,6 +198,19 @@ export async function featured(kind: "new" | "liked"): Promise<ProblemSetSummary
     .orderBy(kind === "new" ? desc(problemSets.updatedAt) : desc(likeCount), desc(problemSets.updatedAt))
     .limit(4);
   return rows.map(toSummary);
+}
+
+/** 公開済みの公開セットで使われたタグだけを候補にする。 */
+export async function publicTagSuggestions(): Promise<string[]> {
+  const result = await db().execute<{ tag: string }>(sql`
+    select tag
+    from ${problemSets}, unnest(${problemSets.tags}) as tag
+    where ${problemSets.visibility} = 'public' and ${problemSets.status} = 'published'
+    group by tag
+    order by count(*) desc, tag asc
+    limit 30
+  `);
+  return result.rows.map((row) => row.tag);
 }
 
 /**

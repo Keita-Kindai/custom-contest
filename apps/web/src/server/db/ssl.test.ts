@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { databaseUrl } from "./ssl";
+import { databaseUrl, migrationDatabaseUrl } from "./ssl";
 
 /**
  * migrationとseedはこの関数を通してしか接続文字列を受け取らない。
@@ -32,5 +32,53 @@ describe("databaseUrl", () => {
   it("trims surrounding whitespace", () => {
     process.env.DATABASE_URL = "  postgresql://keita@localhost:5432/custom_contest  ";
     expect(databaseUrl()).toBe("postgresql://keita@localhost:5432/custom_contest");
+  });
+});
+
+/**
+ * 本番ではDDLを持つロールと実行時ロールを分ける。
+ * migrationを実行時ロールの接続文字列で流すと、`CREATE`が無いので必ず失敗する。
+ */
+describe("migrationDatabaseUrl", () => {
+  const originalMigration = process.env.MIGRATION_DATABASE_URL;
+  const originalDatabase = process.env.DATABASE_URL;
+
+  afterEach(() => {
+    for (const [key, value] of [
+      ["MIGRATION_DATABASE_URL", originalMigration],
+      ["DATABASE_URL", originalDatabase],
+    ] as const) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+
+  it("prefers the migration role when both are set", () => {
+    process.env.MIGRATION_DATABASE_URL = "postgresql://owner:p@host/db";
+    process.env.DATABASE_URL = "postgresql://runtime:p@host/db";
+    expect(migrationDatabaseUrl()).toBe("postgresql://owner:p@host/db");
+  });
+
+  it("falls back to DATABASE_URL where the roles are not split", () => {
+    delete process.env.MIGRATION_DATABASE_URL;
+    process.env.DATABASE_URL = "postgresql://u:p@host/db";
+    expect(migrationDatabaseUrl()).toBe("postgresql://u:p@host/db");
+  });
+
+  it("falls back when the migration variable is present but blank", () => {
+    process.env.MIGRATION_DATABASE_URL = "   ";
+    process.env.DATABASE_URL = "postgresql://u:p@host/db";
+    expect(migrationDatabaseUrl()).toBe("postgresql://u:p@host/db");
+  });
+
+  it("pins sslmode on the migration connection too", () => {
+    process.env.MIGRATION_DATABASE_URL = "postgresql://owner:p@host/db?sslmode=require";
+    expect(migrationDatabaseUrl()).toBe("postgresql://owner:p@host/db?sslmode=verify-full");
+  });
+
+  it("returns null when neither is set", () => {
+    delete process.env.MIGRATION_DATABASE_URL;
+    delete process.env.DATABASE_URL;
+    expect(migrationDatabaseUrl()).toBeNull();
   });
 });

@@ -22,13 +22,32 @@ export function pinSslMode(connectionString: string): string {
   return connectionString.replace(/([?&]sslmode=)(prefer|require|verify-ca)\b/i, "$1verify-full");
 }
 
+function pinned(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? pinSslMode(trimmed) : null;
+}
+
 /**
- * `DATABASE_URL`をTLS設定を固定したうえで返す。未設定ならnull。
+ * 実行時の接続文字列。未設定ならnull。
  *
  * 生の`process.env.DATABASE_URL`を直接`pg`へ渡してはいけない。migrationはDDL権限を持つ
  * 唯一の接続であり、そこだけ検証なしのTLSになると、アプリ本体より弱い経路ができる。
  */
 export function databaseUrl(): string | null {
-  const value = process.env.DATABASE_URL?.trim();
-  return value ? pinSslMode(value) : null;
+  return pinned(process.env.DATABASE_URL);
+}
+
+/**
+ * migrationとseedが使う接続文字列。
+ *
+ * 本番ではDDLを持つロールと、アプリが使う実行時ロールを分ける。実行時ロールには
+ * `CREATE`を与えないので、その接続文字列でmigrationを流すと失敗する。
+ * `MIGRATION_DATABASE_URL`があればそちらを使い、無ければ`DATABASE_URL`へ落ちる。
+ *
+ * 落とすのは、ロールを分けていない環境（ローカル開発、CI、分離前の本番）を
+ * そのまま動かし続けるためである。分離は環境変数を1つ足すだけで有効になり、
+ * 足すまでは今までどおりに動く。
+ */
+export function migrationDatabaseUrl(): string | null {
+  return pinned(process.env.MIGRATION_DATABASE_URL) ?? pinned(process.env.DATABASE_URL);
 }

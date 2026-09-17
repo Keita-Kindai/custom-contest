@@ -154,7 +154,9 @@ export async function discover(query: DiscoverQuery): Promise<ProblemSetSummary[
         ilike(problemSets.title, term),
         ilike(problemSets.description, term),
         ilike(users.displayName, term),
-        sql`${problemSets.tags}::text ILIKE ${term}`,
+        // 配列を`::text`にすると`{DP,グラフ}`という表記そのものと照合することになり、
+        // `,`や`{`の1文字でタグを持つセットが全部一致する。要素ごとに比べる。
+        sql`exists (select 1 from unnest(${problemSets.tags}) as tag where tag ilike ${term})`,
       )!,
     );
   }

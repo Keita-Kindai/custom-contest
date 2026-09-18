@@ -39,6 +39,51 @@ export async function parseBody<T>(request: Request, schema: RuntimeSchema<T>): 
   }
 }
 
+/**
+ * このrequestが自分のサイトから来たかを確かめる。
+ *
+ * 精進側の書き込みはcookieのsessionで本人を決める。cookieはブラウザーが自動で付けるので、
+ * 別のサイトに置かれたformやscriptから書き込みを起こされうる（CSRF）。
+ * いまそれを止めているのはAuth.jsの既定の`SameSite=Lax`だけで、防御が1枚しかない。
+ *
+ * 判定はブラウザーが付けるheaderで行う。どちらもページ側のJavaScriptからは書き換えられない。
+ *
+ * - `Sec-Fetch-Site`があればそれに従う。`cross-site`と`none`は拒否する。
+ * - 無ければ`Origin`とこのserverのhostを比べる。
+ * - どちらも無ければ通す。ブラウザーはこれらを必ず付けるので、
+ *   両方無いrequestはブラウザーではない。CSRFは「ブラウザーを踏み台にする」攻撃なので、
+ *   踏み台になりえない相手をここで止めても、防げるものが増えない。
+ *
+ * userscriptの経路には付けない。あれはatcoder.jpから来る前提で、cookieではなく
+ * tokenで本人を決めているため。
+ */
+export function requireSameOrigin(request: Request): Response | null {
+  const denied = () =>
+    errorResponse(
+      "forbidden",
+      "このリクエストは受け付けられません。",
+      "画面を再読み込みして、もう一度操作してください。",
+      403,
+    );
+
+  const site = request.headers.get("sec-fetch-site");
+  if (site) {
+    return site === "same-origin" || site === "same-site" ? null : denied();
+  }
+
+  const origin = request.headers.get("origin");
+  if (!origin) return null;
+
+  // Vercelはproxyの後ろなので、利用者が見ているhostは`x-forwarded-host`に入る。
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  if (!host) return denied();
+  try {
+    return new URL(origin).host === host ? null : denied();
+  } catch {
+    return denied();
+  }
+}
+
 export function isErrorResponse<T>(value: T | Response): value is Response {
   return value instanceof Response;
 }

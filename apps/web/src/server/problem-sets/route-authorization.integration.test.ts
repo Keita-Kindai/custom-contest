@@ -222,6 +222,64 @@ describe.skipIf(!hasDatabase)("problem set route authorization", () => {
     });
   });
 
+  describe("cross-site writes", () => {
+    function crossSite(method: string, body?: unknown): Request {
+      return new Request("https://custom-problems.vercel.app/api/problem-sets/x", {
+        method,
+        headers: {
+          "sec-fetch-site": "cross-site",
+          ...(body === undefined ? {} : { "content-type": "application/json" }),
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+    }
+
+    it("refuses an update from another site, even for the owner", async () => {
+      as(alice);
+      const body = { ...sample(sets.public, "public", "published"), title: "別サイトから" };
+      const response = await setPut(crossSite("PUT", body), context(sets.public));
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ error: { code: "forbidden" } });
+      // 書き換わっていないこと。
+      const after = await setGet(request("GET", "http://t/x"), context(sets.public));
+      expect(((await after.json()) as ProblemSet).title).not.toBe("別サイトから");
+    });
+
+    it("refuses a delete from another site", async () => {
+      as(alice);
+      expect((await setDelete(crossSite("DELETE"), context(sets.public))).status).toBe(403);
+      expect(await ownerOf(sets.public)).toBe(alice);
+    });
+
+    it.each([
+      ["like", likePost],
+      ["bookmark", bookmarkPost],
+      ["view", viewPost],
+    ] as const)("refuses %s from another site", async (_label, handler) => {
+      as(alice);
+      expect((await handler(crossSite("POST"), context(sets.public))).status).toBe(403);
+    });
+
+    it("answers 403 before it answers 401, so signing in does not look like the fix", async () => {
+      as(null);
+      const body = sample(sets.public, "public", "published");
+      const response = await setPut(crossSite("PUT", body), context(sets.public));
+      expect(response.status).toBe(403);
+    });
+
+    it("still allows a write from the app's own pages", async () => {
+      as(alice);
+      const sameSite = new Request("https://custom-problems.vercel.app/api/problem-sets/x", {
+        method: "PUT",
+        headers: { "sec-fetch-site": "same-origin", "content-type": "application/json" },
+        body: JSON.stringify({ ...sample(sets.public, "public", "published"), title: "自分の画面から" }),
+      });
+      const response = await setPut(sameSite, context(sets.public));
+      expect(response.status).toBe(200);
+      expect(((await response.json()) as ProblemSet).title).toBe("自分の画面から");
+    });
+  });
+
   describe("reactions", () => {
     it.each([
       ["like", likePost],

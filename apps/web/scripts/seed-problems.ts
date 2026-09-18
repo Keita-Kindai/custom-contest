@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { Client } from "pg";
 
 // type strippingは拡張子付きの相対importしか解決できないため、`.ts`まで書く。
-import { databaseUrl } from "../src/server/db/ssl.ts";
+import { migrationDatabaseUrl } from "../src/server/db/ssl.ts";
 
 /**
  * 問題カタログを`problems` tableへ流し込む（ADR-0011）。
@@ -39,10 +39,11 @@ const CATALOG_URL = new URL("../../../packages/domain/src/problems/catalog.json"
 const BATCH_SIZE = 500;
 const COLUMNS = 7;
 
-// `migrate.ts`と同じ理由で、生のDATABASE_URLではなくTLSを固定した値を使う。
-const connectionString = databaseUrl();
+// DDLを持つロールで繋ぐ。実行時ロールには`CREATE`が無いのでmigrationを流せない。
+// TLSは`pinSslMode`が`verify-full`へ固定する。
+const connectionString = migrationDatabaseUrl();
 if (!connectionString) {
-  console.error("DATABASE_URLがありません。apps/web/.env.localを設定してください。");
+  console.error("DATABASE_URLもMIGRATION_DATABASE_URLもありません。apps/web/.env.localを設定してください。");
   process.exitCode = 1;
 } else {
   const catalog = JSON.parse(await readFile(CATALOG_URL, "utf8")) as { problems: CatalogProblem[] };

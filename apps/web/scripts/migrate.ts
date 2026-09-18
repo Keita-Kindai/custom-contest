@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { Client } from "pg";
 
 // type strippingは拡張子付きの相対importしか解決できないため、`.ts`まで書く。
-import { databaseUrl } from "../src/server/db/ssl.ts";
+import { migrationDatabaseUrl } from "../src/server/db/ssl.ts";
 
 /** 適用する順序。同じSQLを再実行しても安全な内容だけを並べる。 */
 const MIGRATIONS = [
@@ -15,11 +15,11 @@ const MIGRATIONS = [
   "0006_external_problem_indexes",
 ] as const;
 
-// 生のDATABASE_URLを使わない。migrationはDDL権限を持つ唯一の接続なので、
-// アプリ本体と同じverify-fullのTLSで繋ぐ。
-const connectionString = databaseUrl();
+// DDLを持つロールで繋ぐ。実行時ロールには`CREATE`が無いのでmigrationを流せない。
+// TLSは`pinSslMode`が`verify-full`へ固定する。
+const connectionString = migrationDatabaseUrl();
 if (!connectionString) {
-  console.error("DATABASE_URLがありません。apps/web/.env.localを設定してください。");
+  console.error("DATABASE_URLもMIGRATION_DATABASE_URLもありません。apps/web/.env.localを設定してください。");
   process.exitCode = 1;
 } else {
   const client = new Client({ connectionString });

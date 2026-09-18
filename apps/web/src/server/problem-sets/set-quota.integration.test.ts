@@ -20,6 +20,7 @@ vi.mock("@/auth", () => ({
 const { getPool } = await import("@/server/db/client");
 const { setsOwnedBy } = await import("./queries");
 const { PUT: setPut } = await import("../../app/api/problem-sets/[setId]/route");
+const { POST: createPost } = await import("../../app/api/problem-sets/route");
 
 const hasDatabase = Boolean(process.env.DATABASE_URL);
 
@@ -50,7 +51,20 @@ function sample(setId: string): ProblemSet {
   };
 }
 
-function put(setId: string): Promise<Response> {
+/** 新規作成。IDはserverが決めるので、bodyには入れない。 */
+function create(): Promise<Response> {
+  const { setId: _ignored, ...draft } = sample("ps_ignored0001");
+  return createPost(
+    new Request("http://t/api/problem-sets", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(draft),
+    }),
+  );
+}
+
+/** 既存セットの更新。上限に達していても通るはず。 */
+function update(setId: string): Promise<Response> {
   return setPut(
     new Request("http://t/x", {
       method: "PUT",
@@ -99,14 +113,14 @@ describe.skipIf(!hasDatabase)("problem set quota", () => {
 
   it("lets a new set through below the limit", async () => {
     await fill(atLimit - 1);
-    const response = await put(setIdAt(99_990));
-    expect(response.status).toBe(200);
+    const response = await create();
+    expect(response.status).toBe(201);
     expect(await setsOwnedBy(owner)).toBe(atLimit);
   });
 
   it("refuses a new set at the limit, with 409 rather than 429", async () => {
     await fill(atLimit);
-    const response = await put(setIdAt(99_991));
+    const response = await create();
     // 時間を置いても解消しないので、あとで再試行を促す429にはしない。
     expect(response.status).toBe(409);
     expect(await response.json()).toMatchObject({ error: { code: "quota_exceeded" } });
@@ -116,8 +130,7 @@ describe.skipIf(!hasDatabase)("problem set quota", () => {
   it("still lets an existing set be updated at the limit", async () => {
     await fill(atLimit);
     // 更新はセットの数を増やさないので、上限に達していても通す。
-    const existing = setIdAt(1);
-    const response = await put(existing);
+    const response = await update(setIdAt(1));
     expect(response.status).toBe(200);
     expect(await setsOwnedBy(owner)).toBe(atLimit);
   });
@@ -126,12 +139,23 @@ describe.skipIf(!hasDatabase)("problem set quota", () => {
     await fill(atLimit);
     await getPool()?.query("delete from problem_sets where set_id = $1", [setIdAt(1)]);
     expect(await setsOwnedBy(owner)).toBe(atLimit - 1);
-    expect((await put(setIdAt(99_992))).status).toBe(200);
+    expect((await create()).status).toBe(201);
   });
 
   it("counts drafts and private sets, not only published ones", async () => {
     // fill() が作るのはすべて draft かつ private。それでも上限に当たる。
     await fill(atLimit);
-    expect((await put(setIdAt(99_993))).status).toBe(409);
+    expect((await create()).status).toBe(409);
+  });
+
+  it("is enforced on the create route, not the update route", async () => {
+    /*
+     * #43 で作成が`POST`へ移った。判定を`PUT`に残すと、`PUT`は存在しないIDへ
+     * 404を返すようになったため、条件に到達せず上限が効かなくなる。
+     * 作成経路で止まっていることを、ここで固定する。
+     */
+    await fill(atLimit);
+    expect((await create()).status).toBe(409);
+    expect((await update(setIdAt(2))).status).toBe(200);
   });
 });

@@ -96,8 +96,9 @@ describe.skipIf(!hasDatabase)("problem set queries", () => {
       sort: "new",
       difficultyMin: null,
       difficultyMax: null,
+      cursor: null,
     });
-    const ids = found.map((summary) => summary.setId);
+    const ids = found.items.map((summary) => summary.setId);
     expect(ids).toContain(publicSet);
     expect(ids).not.toContain(unlistedSet);
     expect(ids).not.toContain(privateSet);

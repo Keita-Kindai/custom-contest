@@ -134,6 +134,16 @@ export const problemSetInputSchema = problemSetSchema.omit({
 export type ProblemSetInput = z.infer<typeof problemSetInputSchema>;
 
 /**
+ * 新規作成でclientが送ってよい範囲。`setId`を含まない。
+ *
+ * 限定公開は`set_id`が推測しにくいことに依存している。その値をclientが決めると、
+ * 秘密の強さをserverが保証できない。作成時のIDはserverが作る。
+ * 既にあるセットのIDはそのまま使い続ける（URLを変えない）。
+ */
+export const problemSetCreateSchema = problemSetInputSchema.omit({ setId: true });
+export type ProblemSetCreate = z.infer<typeof problemSetCreateSchema>;
+
+/**
  * 一覧のカードが必要とする形。
  * 13章のカード共通フォーマット（タイトル／カテゴリ・作者／いいね数／公開状態）に対応する。
  */

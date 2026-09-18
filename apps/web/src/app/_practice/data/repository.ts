@@ -4,6 +4,7 @@ import type {
   DiscoverQuery,
   LibraryTab,
   ProblemSet,
+  ProblemSetCreate,
   ProblemSetInput,
   ProblemSetSummary,
   SetSolveStatusMap,
@@ -23,6 +24,7 @@ export type ProblemSetRepository = {
   discover(query: DiscoverQuery): Promise<ProblemSetSummary[]>;
   featured(kind: "new" | "liked"): Promise<ProblemSetSummary[]>;
   get(setId: string): Promise<ProblemSet | null>;
+  create(input: ProblemSetCreate): Promise<ProblemSet>;
   save(input: ProblemSetInput): Promise<ProblemSet>;
   remove(setId: string): Promise<void>;
   library(tab: LibraryTab): Promise<ProblemSetSummary[]>;
@@ -135,6 +137,17 @@ export const problemSetRepository: ProblemSetRepository = {
     }
   },
 
+  async create(input) {
+    // IDはserverが決める。返ってきたセットの`setId`が正本になる。
+    const created = await request<ProblemSet>("", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    notify();
+    return created;
+  },
+
   async save(input) {
     const saved = await request<ProblemSet>(`/${input.setId}`, jsonBody(input));
     notify();
@@ -195,9 +208,3 @@ export const problemSetRepository: ProblemSetRepository = {
   },
 };
 
-export function newProblemSetId(): string {
-  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
-  const bytes = new Uint8Array(10);
-  crypto.getRandomValues(bytes);
-  return `ps_${[...bytes].map((byte) => alphabet[byte % alphabet.length]).join("")}`;
-}

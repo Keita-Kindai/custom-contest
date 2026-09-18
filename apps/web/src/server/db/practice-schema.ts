@@ -53,7 +53,9 @@ export const problems = pgTable(
   (table) => [
     index("problems_difficulty_idx").on(table.difficulty),
     unique("problems_external_url_unique").on(table.externalUrl),
-    index("problems_external_updated_idx").on(table.origin, table.updatedAt.desc()),
+    // 一覧はcreated_atの降順で並べる。updated_atのindexではORDER BYに使えない。
+    index("problems_external_created_idx").on(table.origin, table.createdAt.desc()),
+    index("problems_external_author_idx").on(table.createdByUserId, table.createdAt.desc()),
   ],
 );
 

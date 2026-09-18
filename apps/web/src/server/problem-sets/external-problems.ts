@@ -30,6 +30,19 @@ export function normalizeExternalProblemUrl(value: string): string | null {
   }
 }
 
+/**
+ * 一覧に出す出典表記。`source`は32文字まで。
+ *
+ * ホスト名を右から切ってはいけない。意味を持つのは右端の登録可能ドメインのほうで、
+ * 左端は登録者が自由に付けられるsubdomainである。右から切ると、
+ * `atcoder-jp-problems.attacker.example`が`atcoder-jp-problems.attacker.exa`になり、
+ * 本当のドメインだけが消える。閲覧者に見えている唯一の出所がそれなので、左から削る。
+ */
+export function sourceLabel(hostname: string): string {
+  if (hostname.length <= 32) return hostname;
+  return `…${hostname.slice(hostname.length - 31)}`;
+}
+
 function asCatalog(row: typeof problems.$inferSelect): CatalogProblem {
   return {
     problemId: row.problemId,
@@ -72,7 +85,7 @@ export async function registerExternalProblem(input: ExternalProblemInput, userI
     problemIndex: "link",
     title: input.title,
     difficulty: null,
-    source: url.hostname.slice(0, 32),
+    source: sourceLabel(url.hostname),
     tags: [],
     origin: "external",
     externalUrl: canonical,

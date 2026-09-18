@@ -183,6 +183,14 @@ export const PROBLEM_SET_SORT_LABEL: Record<ProblemSetSort, string> = {
   new: "新着順",
 };
 
+/**
+ * 1ページの件数。
+ *
+ * 一覧は「全部返す」をやめてカーソルで送る。上限が無いと、公開セットが増えるほど
+ * 1回のrequestが重くなり、未認証で叩けるぶん誰でもその重さを引き出せる。
+ */
+export const DISCOVER_PAGE_SIZE = 24;
+
 export const discoverQuerySchema = z.object({
   q: z.string().trim().max(80).default(""),
   tags: z.array(problemSetTagSchema).max(6).default([]),
@@ -191,8 +199,20 @@ export const discoverQuerySchema = z.object({
   sort: problemSetSortSchema.default("popular"),
   difficultyMin: z.number().int().nullable().default(null),
   difficultyMax: z.number().int().nullable().default(null),
+  /**
+   * 前のページの最後の位置。serverが返した値をそのまま返す。
+   * 中身はserverの都合なので、clientは読まず組み立てもしない。
+   */
+  cursor: z.string().max(256).nullable().default(null),
 });
 export type DiscoverQuery = z.infer<typeof discoverQuerySchema>;
+
+/** Discoverの1ページ。`nextCursor`がnullなら、そこで終わり。 */
+export const discoverPageSchema = z.object({
+  items: z.array(problemSetSummarySchema),
+  nextCursor: z.string().nullable(),
+});
+export type DiscoverPage = z.infer<typeof discoverPageSchema>;
 
 /** ライブラリ（マイページ）のタブ。 */
 export const libraryTabSchema = z.enum(["created", "bookmarked", "liked", "recent"]);

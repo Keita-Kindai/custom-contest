@@ -13,6 +13,7 @@ const MIGRATIONS = [
   "0004_widen_problem_index",
   "0005_external_problem_links",
   "0006_external_problem_indexes",
+  "0007_problem_set_like_count",
 ] as const;
 
 // DDLを持つロールで繋ぐ。実行時ロールには`CREATE`が無いのでmigrationを流せない。

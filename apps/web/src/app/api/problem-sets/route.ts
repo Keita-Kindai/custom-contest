@@ -28,6 +28,7 @@ export async function GET(request: Request) {
     sort: problemSetSortSchema.safeParse(params.get("sort")).success ? params.get("sort") : "popular",
     difficultyMin: optionalInt(params.get("difficultyMin")),
     difficultyMax: optionalInt(params.get("difficultyMax")),
+    cursor: params.get("cursor"),
   });
   if (!parsed.success) {
     return errorResponse("invalid_request", "検索条件を確認できませんでした。", null, 400);

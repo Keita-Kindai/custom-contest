@@ -1,4 +1,8 @@
-import { MAX_PROBLEMS_PER_SET, problemSetInputSchema } from "@custom-contest/contracts";
+import {
+  MAX_PROBLEMS_PER_SET,
+  MAX_SETS_PER_USER,
+  problemSetInputSchema,
+} from "@custom-contest/contracts";
 
 import { errorResponse, isErrorResponse, jsonResponse, parseBody } from "@/server/http";
 import {
@@ -7,6 +11,7 @@ import {
   ownerOf,
   removeSet,
   saveSet,
+  setsOwnedBy,
 } from "@/server/problem-sets/queries";
 import {
   handleQueryError,
@@ -61,6 +66,16 @@ export async function PUT(request: Request, { params }: Params) {
     // 既にあるセットは持ち主だけが書ける。無いIDは新規作成として通す。
     if (owner !== null && owner !== viewer) {
       return errorResponse("set_not_found", "この問題セットは見つかりませんでした。", null, 404);
+    }
+
+    // 上限を見るのは新規作成のときだけ。更新はセットの数を増やさない。
+    if (owner === null && (await setsOwnedBy(viewer)) >= MAX_SETS_PER_USER) {
+      return errorResponse(
+        "quota_exceeded",
+        `作れる問題セットは1人${MAX_SETS_PER_USER}件までです。`,
+        "使っていないセットを削除してから、もう一度お試しください。",
+        409,
+      );
     }
 
     // カタログにない問題は外部キー違反になる。先に見つけて理由を返す。

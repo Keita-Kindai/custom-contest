@@ -50,7 +50,7 @@ export function statusForCode(code: ApiErrorCode): number {
   if (code === "unauthorized") return 401;
   if (code === "not_a_participant" || code === "forbidden" || code === "not_host") return 403;
   if (code === "storage_unavailable") return 503;
-  if (code === "room_full") return 409;
+  if (code === "room_full" || code === "quota_exceeded") return 409;
   return 400;
 }
 

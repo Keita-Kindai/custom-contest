@@ -2,6 +2,7 @@ import {
   type DiscoverQuery,
   type LibraryTab,
   type ProblemSet,
+  type ProblemSetCreate,
   type ProblemSetInput,
   type ProblemSetSummary,
   type ProblemSetItem,
@@ -22,6 +23,8 @@ import {
   problems,
   setProblemStatus,
 } from "@/server/db/practice-schema";
+
+import { newSetId } from "./set-id";
 
 /**
  * 問題セットの読み書き（ADR-0011）。
@@ -346,6 +349,53 @@ export async function saveSet(set: ProblemSetInput, ownerId: string): Promise<vo
       );
     }
   });
+}
+
+/**
+ * 新しいセットを作る。IDはserverが決める。
+ *
+ * `saveSet`のupsertと分けてあるのは、作成と更新で守るものが違うため。
+ * 更新は「持ち主が一致すること」を守る。作成は「既にあるIDを書き換えないこと」を守る。
+ * 1つのupsertに両方を持たせると、衝突したときにどちらの意味だったのかが消える。
+ *
+ * 36^10の空間で偶然ぶつかることはまず起きないが、起きたときに他人のセットを
+ * 上書きするわけにはいかないので、`onConflictDoNothing`で弾いて引き直す。
+ */
+export async function createSet(set: ProblemSetCreate, ownerId: string): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const setId = newSetId();
+    const created = await db().transaction(async (tx) => {
+      const rows = await tx
+        .insert(problemSets)
+        .values({
+          setId,
+          ownerId,
+          title: set.title,
+          description: set.description,
+          tags: set.tags,
+          targetBands: set.targetBands,
+          visibility: set.visibility,
+          status: set.status,
+        })
+        .onConflictDoNothing()
+        .returning({ setId: problemSets.setId });
+      if (rows.length === 0) return false;
+
+      if (set.problems.length > 0) {
+        await tx.insert(problemSetItems).values(
+          set.problems.map((problem, position) => ({
+            setId,
+            position,
+            problemId: problem.problemId,
+            authorBand: problem.authorBand,
+          })),
+        );
+      }
+      return true;
+    });
+    if (created) return setId;
+  }
+  throw new Error("問題セットのIDを決められませんでした。");
 }
 
 export async function removeSet(setId: string): Promise<void> {

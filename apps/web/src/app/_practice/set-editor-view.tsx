@@ -16,6 +16,7 @@ import {
   VISIBILITY_LABEL,
   difficultyRangeOf,
   problemSetTagSchema,
+  problemSetCreateSchema,
   problemSetInputSchema,
   visibilitySchema,
   type BandKey,
@@ -35,7 +36,7 @@ import {
   TargetBandDots,
 } from "./components/atoms";
 import { PracticeBlocksSkeleton } from "./components/skeletons";
-import { ApiError, newProblemSetId, problemSetRepository } from "./data/repository";
+import { ApiError, problemSetRepository } from "./data/repository";
 
 /** Diff帯のプリセット。検索の絞り込みに使う。 
  * DIFFICULTY_BANDSは @/packages/contracts/src/problem-set.tsにあるもの
@@ -321,8 +322,8 @@ export function SetEditorView({ setId }: { setId?: string }) {
     setSaving(true);
     setAskVisibility(false);
     // 作成者・いいね数・時刻はserverが決めるので送らない。
-    const input: ProblemSetInput = {
-      setId: setId ?? newProblemSetId(),
+    // 新規作成では`setId`も送らない。IDはserverが決め、保存の応答で返る。
+    const draft = {
       title: title.trim(),
       description: description.trim(),
       tags,
@@ -333,14 +334,24 @@ export function SetEditorView({ setId }: { setId?: string }) {
     };
     // 送る前に契約どおりの形かを確かめる。問題数の上限のような制約は、
     // 画面側で防いでいてもここが最後の関門になる。
-    const parsed = problemSetInputSchema.safeParse(input);
-    if (!parsed.success) {
+    // 既にあるセットは更新、まだ無いセットは作成で、送る形も宛先も違う。
+    const send = () => {
+      if (setId) {
+        const parsed = problemSetInputSchema.safeParse({ ...draft, setId });
+        return parsed.success ? problemSetRepository.save(parsed.data) : null;
+      }
+      const parsed = problemSetCreateSchema.safeParse(draft);
+      return parsed.success ? problemSetRepository.create(parsed.data) : null;
+    };
+
+    const pending = send();
+    if (!pending) {
       setSaving(false);
       setNotice("保存できない内容が含まれています。問題数やタイトルの長さを確認してください。");
       return;
     }
     try {
-      const saved = await problemSetRepository.save(parsed.data);
+      const saved = await pending;
       router.push(`/sets/${saved.setId}`);
     } catch (error) {
       setSaving(false);

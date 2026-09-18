@@ -20,10 +20,9 @@ import {
   type RoomState,
 } from "@custom-contest/domain";
 
-import { maybeDeleteExpiredMatches, saveStoredMatch, storedMatchFromState } from "../db/matches";
 import { fakeEvidenceEnabled } from "@/server/feature-gate";
 
-import { saveStoredMatch, storedMatchFromState } from "../db/matches";
+import { maybeDeleteExpiredMatches, saveStoredMatch, storedMatchFromState } from "../db/matches";
 
 type StoreGlobal = typeof globalThis & { __customContestRoomStore?: RoomStore };
 

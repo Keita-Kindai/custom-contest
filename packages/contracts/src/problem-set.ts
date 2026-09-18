@@ -134,6 +134,16 @@ export const problemSetInputSchema = problemSetSchema.omit({
 export type ProblemSetInput = z.infer<typeof problemSetInputSchema>;
 
 /**
+ * 新規作成でclientが送ってよい範囲。`setId`を含まない。
+ *
+ * 限定公開は`set_id`が推測しにくいことに依存している。その値をclientが決めると、
+ * 秘密の強さをserverが保証できない。作成時のIDはserverが作る。
+ * 既にあるセットのIDはそのまま使い続ける（URLを変えない）。
+ */
+export const problemSetCreateSchema = problemSetInputSchema.omit({ setId: true });
+export type ProblemSetCreate = z.infer<typeof problemSetCreateSchema>;
+
+/**
  * 一覧のカードが必要とする形。
  * 13章のカード共通フォーマット（タイトル／カテゴリ・作者／いいね数／公開状態）に対応する。
  */
@@ -173,6 +183,14 @@ export const PROBLEM_SET_SORT_LABEL: Record<ProblemSetSort, string> = {
   new: "新着順",
 };
 
+/**
+ * 1ページの件数。
+ *
+ * 一覧は「全部返す」をやめてカーソルで送る。上限が無いと、公開セットが増えるほど
+ * 1回のrequestが重くなり、未認証で叩けるぶん誰でもその重さを引き出せる。
+ */
+export const DISCOVER_PAGE_SIZE = 24;
+
 export const discoverQuerySchema = z.object({
   q: z.string().trim().max(80).default(""),
   tags: z.array(problemSetTagSchema).max(6).default([]),
@@ -181,8 +199,20 @@ export const discoverQuerySchema = z.object({
   sort: problemSetSortSchema.default("popular"),
   difficultyMin: z.number().int().nullable().default(null),
   difficultyMax: z.number().int().nullable().default(null),
+  /**
+   * 前のページの最後の位置。serverが返した値をそのまま返す。
+   * 中身はserverの都合なので、clientは読まず組み立てもしない。
+   */
+  cursor: z.string().max(256).nullable().default(null),
 });
 export type DiscoverQuery = z.infer<typeof discoverQuerySchema>;
+
+/** Discoverの1ページ。`nextCursor`がnullなら、そこで終わり。 */
+export const discoverPageSchema = z.object({
+  items: z.array(problemSetSummarySchema),
+  nextCursor: z.string().nullable(),
+});
+export type DiscoverPage = z.infer<typeof discoverPageSchema>;
 
 /** ライブラリ（マイページ）のタブ。 */
 export const libraryTabSchema = z.enum(["created", "bookmarked", "liked", "recent"]);

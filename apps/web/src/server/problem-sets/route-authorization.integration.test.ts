@@ -1,4 +1,4 @@
-import type { ProblemSet, ProblemSetSummary, Visibility } from "@custom-contest/contracts";
+import type { DiscoverPage, ProblemSet, ProblemSetSummary, Visibility } from "@custom-contest/contracts";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -28,7 +28,7 @@ const {
   PUT: setPut,
   DELETE: setDelete,
 } = await import("../../app/api/problem-sets/[setId]/route");
-const { GET: discoverGet } = await import("../../app/api/problem-sets/route");
+const { GET: discoverGet, POST: createPost } = await import("../../app/api/problem-sets/route");
 const { GET: libraryGet } = await import("../../app/api/problem-sets/library/route");
 const { GET: countsGet } = await import("../../app/api/problem-sets/counts/route");
 const { GET: viewerGet } = await import("../../app/api/problem-sets/[setId]/viewer/route");
@@ -196,13 +196,19 @@ describe.skipIf(!hasDatabase)("problem set route authorization", () => {
     });
 
     it("ignores an ownerId supplied in the body", async () => {
-      as(bob);
-      const body = { ...sample("ps_authz00new", "public", "published"), ownerId: alice };
-      const response = await setPut(request("PUT", "http://t/x", body), context("ps_authz00new"));
-      expect(response.status).toBe(200);
+      as(alice);
+      const body = { ...sample(sets.public, "public", "published"), ownerId: bob };
+      expect((await setPut(request("PUT", "http://t/x", body), context(sets.public))).status).toBe(200);
       // 持ち主はsessionから決まる。bodyの`ownerId`は読まれない。
-      expect(await ownerOf("ps_authz00new")).toBe(bob);
-      await getPool()?.query("delete from problem_sets where set_id = $1", ["ps_authz00new"]);
+      expect(await ownerOf(sets.public)).toBe(alice);
+    });
+
+    it("refuses to create through the update route", async () => {
+      as(bob);
+      // IDはserverが決める。無いIDへのPUTで作れると、clientが自分でIDを選べてしまう。
+      const body = sample("ps_neverexist", "public", "published");
+      expect((await setPut(request("PUT", "http://t/x", body), context("ps_neverexist"))).status).toBe(404);
+      expect(await ownerOf("ps_neverexist")).toBeNull();
     });
 
     it("rejects a body whose setId disagrees with the URL", async () => {
@@ -277,6 +283,67 @@ describe.skipIf(!hasDatabase)("problem set route authorization", () => {
       const response = await setPut(sameSite, context(sets.public));
       expect(response.status).toBe(200);
       expect(((await response.json()) as ProblemSet).title).toBe("自分の画面から");
+    });
+  });
+
+  describe("creating a set", () => {
+    it("refuses without a session", async () => {
+      as(null);
+      const { setId: _ignored, ...draft } = sample(sets.public, "public", "published");
+      expect((await createPost(request("POST", "http://t/api", draft))).status).toBe(401);
+    });
+
+    it("assigns an id the caller did not choose", async () => {
+      as(bob);
+      const { setId: _ignored, ...draft } = sample(sets.public, "public", "published");
+      // bodyへ紛れ込ませたIDは読まれない。serverが決めた値が返る。
+      const response = await createPost(
+        request("POST", "http://t/api", { ...draft, setId: "ps_chosenbyme" }),
+      );
+      expect(response.status).toBe(201);
+      const created = (await response.json()) as ProblemSet;
+      expect(created.setId).not.toBe("ps_chosenbyme");
+      expect(created.setId).toMatch(/^ps_[0-9a-z]{10}$/u);
+      expect(await ownerOf("ps_chosenbyme")).toBeNull();
+      expect(await ownerOf(created.setId)).toBe(bob);
+      await getPool()?.query("delete from problem_sets where set_id = $1", [created.setId]);
+    });
+
+    it("gives two creations different ids", async () => {
+      as(bob);
+      const { setId: _ignored, ...draft } = sample(sets.public, "public", "published");
+      const ids: string[] = [];
+      for (let i = 0; i < 2; i += 1) {
+        const response = await createPost(request("POST", "http://t/api", draft));
+        expect(response.status).toBe(201);
+        ids.push(((await response.json()) as ProblemSet).setId);
+      }
+      expect(ids[0]).not.toBe(ids[1]);
+      await getPool()?.query("delete from problem_sets where set_id = any($1)", [ids]);
+    });
+
+    it("refuses a creation that arrives from another site", async () => {
+      as(bob);
+      const { setId: _ignored, ...draft } = sample(sets.public, "public", "published");
+      const response = await createPost(
+        new Request("https://custom-problems.vercel.app/api/problem-sets", {
+          method: "POST",
+          headers: { "sec-fetch-site": "cross-site", "content-type": "application/json" },
+          body: JSON.stringify(draft),
+        }),
+      );
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ error: { code: "forbidden" } });
+    });
+
+    it("refuses a problem that is not in the catalogue", async () => {
+      as(bob);
+      const { setId: _ignored, ...draft } = sample(sets.public, "public", "published");
+      const body = {
+        ...draft,
+        problems: [{ ...draft.problems[0], problemId: "not_a_real_problem" }],
+      };
+      expect((await createPost(request("POST", "http://t/api", body))).status).toBe(400);
     });
   });
 
@@ -370,15 +437,17 @@ describe.skipIf(!hasDatabase)("problem set route authorization", () => {
     it("shows only published public sets on Discover", async () => {
       as(null);
       const response = await discoverGet(request("GET", "http://t/api?q=認可検証"));
-      const found = (await response.json()) as ProblemSetSummary[];
-      expect(found.map((entry) => entry.setId)).toEqual([sets.public]);
+      const found = (await response.json()) as DiscoverPage;
+      expect(found.items.map((entry) => entry.setId)).toEqual([sets.public]);
+      expect(found.nextCursor).toBeNull();
     });
 
     it("shows the same Discover result to a signed-in stranger", async () => {
       as(bob);
       const response = await discoverGet(request("GET", "http://t/api?q=認可検証"));
-      const found = (await response.json()) as ProblemSetSummary[];
-      expect(found.map((entry) => entry.setId)).toEqual([sets.public]);
+      const found = (await response.json()) as DiscoverPage;
+      expect(found.items.map((entry) => entry.setId)).toEqual([sets.public]);
+      expect(found.nextCursor).toBeNull();
     });
 
     it("drops a liked set from the stranger's library once it is made private", async () => {

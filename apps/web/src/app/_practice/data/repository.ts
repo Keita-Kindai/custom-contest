@@ -1,9 +1,11 @@
 "use client";
 
 import type {
+  DiscoverPage,
   DiscoverQuery,
   LibraryTab,
   ProblemSet,
+  ProblemSetCreate,
   ProblemSetInput,
   ProblemSetSummary,
   SetSolveStatusMap,
@@ -20,9 +22,10 @@ import type {
  * ブラウザー内保存はもう使わない。作ったセットはアカウントに残り、別の端末からも開ける。
  */
 export type ProblemSetRepository = {
-  discover(query: DiscoverQuery): Promise<ProblemSetSummary[]>;
+  discover(query: DiscoverQuery): Promise<DiscoverPage>;
   featured(kind: "new" | "liked"): Promise<ProblemSetSummary[]>;
   get(setId: string): Promise<ProblemSet | null>;
+  create(input: ProblemSetCreate): Promise<ProblemSet>;
   save(input: ProblemSetInput): Promise<ProblemSet>;
   remove(setId: string): Promise<void>;
   library(tab: LibraryTab): Promise<ProblemSetSummary[]>;
@@ -99,6 +102,8 @@ function discoverParams(query: DiscoverQuery): string {
   params.set("sort", query.sort);
   if (query.difficultyMin !== null) params.set("difficultyMin", String(query.difficultyMin));
   if (query.difficultyMax !== null) params.set("difficultyMax", String(query.difficultyMax));
+  // カーソルはserverが返した値をそのまま返す。中身は読まない。
+  if (query.cursor) params.set("cursor", query.cursor);
   return params.toString();
 }
 
@@ -118,7 +123,7 @@ function notify(): void {
 
 export const problemSetRepository: ProblemSetRepository = {
   async discover(query) {
-    return request<ProblemSetSummary[]>(`?${discoverParams(query)}`);
+    return request<DiscoverPage>(`?${discoverParams(query)}`);
   },
 
   async featured(kind) {
@@ -133,6 +138,17 @@ export const problemSetRepository: ProblemSetRepository = {
       if (error instanceof ApiError && error.status === 404) return null;
       throw error;
     }
+  },
+
+  async create(input) {
+    // IDはserverが決める。返ってきたセットの`setId`が正本になる。
+    const created = await request<ProblemSet>("", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    notify();
+    return created;
   },
 
   async save(input) {
@@ -195,9 +211,3 @@ export const problemSetRepository: ProblemSetRepository = {
   },
 };
 
-export function newProblemSetId(): string {
-  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
-  const bytes = new Uint8Array(10);
-  crypto.getRandomValues(bytes);
-  return `ps_${[...bytes].map((byte) => alphabet[byte % alphabet.length]).join("")}`;
-}

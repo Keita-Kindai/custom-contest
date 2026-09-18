@@ -75,13 +75,35 @@ export const problemSets = pgTable(
     targetBands: text("target_bands").array().$type<BandKey[]>().notNull().default([]),
     visibility: varchar("visibility", { length: 8 }).$type<Visibility>().notNull(),
     status: varchar("status", { length: 9 }).$type<ProblemSetStatus>().notNull(),
+    /**
+     * いいねの数。`problem_set_likes`のtriggerだけが書く（0007）。
+     *
+     * 数えるのをやめて列にしたのは、既定の並び順が`popular`だからである。
+     * 相関サブクエリのCOUNT(*)で並べ替えると、どのindexも使えず、
+     * 公開セットが増えたぶんだけ一覧が重くなる。
+     */
+    likeCount: integer("like_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("problem_sets_tags_idx").using("gin", table.tags),
     index("problem_sets_bands_idx").using("gin", table.targetBands),
-    index("problem_sets_discover_idx").on(table.visibility, table.status, table.updatedAt.desc()),
+    // 並び順をそのままindexへ載せる。末尾のset_idはページ境界の決着用で、
+    // カーソルもこの組で進む。
+    index("problem_sets_popular_idx").on(
+      table.visibility,
+      table.status,
+      table.likeCount.desc(),
+      table.updatedAt.desc(),
+      table.setId.desc(),
+    ),
+    index("problem_sets_recent_idx").on(
+      table.visibility,
+      table.status,
+      table.updatedAt.desc(),
+      table.setId.desc(),
+    ),
     index("problem_sets_owner_idx").on(table.ownerId, table.updatedAt.desc()),
   ],
 );

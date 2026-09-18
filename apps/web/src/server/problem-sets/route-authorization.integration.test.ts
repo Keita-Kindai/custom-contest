@@ -1,4 +1,4 @@
-import type { ProblemSet, ProblemSetSummary, Visibility } from "@custom-contest/contracts";
+import type { DiscoverPage, ProblemSet, ProblemSetSummary, Visibility } from "@custom-contest/contracts";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -312,15 +312,17 @@ describe.skipIf(!hasDatabase)("problem set route authorization", () => {
     it("shows only published public sets on Discover", async () => {
       as(null);
       const response = await discoverGet(request("GET", "http://t/api?q=認可検証"));
-      const found = (await response.json()) as ProblemSetSummary[];
-      expect(found.map((entry) => entry.setId)).toEqual([sets.public]);
+      const found = (await response.json()) as DiscoverPage;
+      expect(found.items.map((entry) => entry.setId)).toEqual([sets.public]);
+      expect(found.nextCursor).toBeNull();
     });
 
     it("shows the same Discover result to a signed-in stranger", async () => {
       as(bob);
       const response = await discoverGet(request("GET", "http://t/api?q=認可検証"));
-      const found = (await response.json()) as ProblemSetSummary[];
-      expect(found.map((entry) => entry.setId)).toEqual([sets.public]);
+      const found = (await response.json()) as DiscoverPage;
+      expect(found.items.map((entry) => entry.setId)).toEqual([sets.public]);
+      expect(found.nextCursor).toBeNull();
     });
 
     it("drops a liked set from the stranger's library once it is made private", async () => {

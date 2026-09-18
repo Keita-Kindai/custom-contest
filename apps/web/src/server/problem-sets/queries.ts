@@ -1,4 +1,6 @@
 import {
+  DISCOVER_PAGE_SIZE,
+  type DiscoverPage,
   type DiscoverQuery,
   type LibraryTab,
   type ProblemSet,
@@ -9,7 +11,7 @@ import {
   type SolveStatus,
   type SolveStatusMap,
 } from "@custom-contest/contracts";
-import { and, arrayOverlaps, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, arrayOverlaps, asc, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
 
 import { users } from "@/server/db/auth-schema";
 import { getDb } from "@/server/db/client";
@@ -45,11 +47,6 @@ function db() {
   return instance;
 }
 
-/** いいね数はCOUNT(*)で出す。非正規化した列は置かない。 */
-const likeCount = sql<number>`(
-  select count(*)::int from ${problemSetLikes} where ${problemSetLikes.setId} = ${problemSets.setId}
-)`;
-
 const problemCount = sql<number>`(
   select count(*)::int from ${problemSetItems} where ${problemSetItems.setId} = ${problemSets.setId}
 )`;
@@ -77,7 +74,8 @@ const summaryColumns = {
   updatedAt: problemSets.updatedAt,
   authorName: users.displayName,
   fallbackName: users.name,
-  likeCount,
+  // triggerが維持する列（0007）。数え直さない。
+  likeCount: problemSets.likeCount,
   problemCount,
   problemIds,
   difficulties,
@@ -140,7 +138,59 @@ const listableInDiscover = and(
   eq(problemSets.status, "published"),
 );
 
-export async function discover(query: DiscoverQuery): Promise<ProblemSetSummary[]> {
+/**
+ * Difficultyの絞り込みをSQLへ持ち込む。
+ *
+ * 以前は全行を取ってからJavaScript側で落としていた。ページ送りを入れると、
+ * それでは1ページの件数が絞り込みのぶんだけ減ってしまい、LIMITが意味を失う。
+ *
+ * 判定はセットの中のDifficultyの幅と、指定された範囲が重なるかどうか。
+ * `max(difficulty) >= min` は「min以上の問題が1問でもある」と同じなので、
+ * 集計せずEXISTSで書ける。Difficultyを持つ問題が1問も無いセットは、
+ * どちらのEXISTSも成立せず外れる（従来と同じ扱い）。
+ */
+function overlapsDifficulty(min: number | null, max: number | null) {
+  const clauses: SQL[] = [];
+  const inThisSet = sql`
+    from ${problemSetItems}
+    join ${problems} on ${problems.problemId} = ${problemSetItems.problemId}
+    where ${problemSetItems.setId} = ${problemSets.setId}
+  `;
+  if (min !== null) {
+    clauses.push(sql`exists (select 1 ${inThisSet} and ${problems.difficulty} >= ${min})`);
+  }
+  if (max !== null) {
+    clauses.push(sql`exists (select 1 ${inThisSet} and ${problems.difficulty} <= ${max})`);
+  }
+  return clauses;
+}
+
+/**
+ * カーソルは並び順の最後の1行そのもの。`popular`なら(いいね数, 更新時刻, ID)、
+ * `new`なら(更新時刻, ID)。OFFSETを使わないのは、件数が増えるほど読み飛ばす行が
+ * 増えるうえ、読んでいる間に新しいセットが入ると同じ行が二度出るため。
+ */
+type DiscoverCursor = { likeCount: number | null; updatedAt: string; setId: string };
+
+function encodeCursor(cursor: DiscoverCursor): string {
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+}
+
+function decodeCursor(value: string | null): DiscoverCursor | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as DiscoverCursor;
+    if (typeof parsed.updatedAt !== "string" || typeof parsed.setId !== "string") return null;
+    if (parsed.likeCount !== null && typeof parsed.likeCount !== "number") return null;
+    // 壊れたカーソルは先頭からとして扱う。clientが組み立てる値ではないので、
+    // ここで400を返しても利用者には直しようがない。
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function discover(query: DiscoverQuery): Promise<DiscoverPage> {
   const conditions = [listableInDiscover];
 
   // タグは「選んだタグをすべて含む」。想定者は「どれか1色でも当てはまる」。
@@ -161,34 +211,49 @@ export async function discover(query: DiscoverQuery): Promise<ProblemSetSummary[
     );
   }
 
+  conditions.push(...overlapsDifficulty(query.difficultyMin, query.difficultyMax));
+
+  const byPopularity = query.sort !== "new";
+  const cursor = decodeCursor(query.cursor);
+  if (cursor) {
+    // 行の組で比べる。indexの並びと同じ順序なので、途中から続きを読める。
+    conditions.push(
+      byPopularity
+        ? sql`(${problemSets.likeCount}, ${problemSets.updatedAt}, ${problemSets.setId})
+              < (${cursor.likeCount ?? 0}, ${new Date(cursor.updatedAt)}, ${cursor.setId})`
+        : sql`(${problemSets.updatedAt}, ${problemSets.setId})
+              < (${new Date(cursor.updatedAt)}, ${cursor.setId})`,
+    );
+  }
+
+  const order = byPopularity
+    ? [desc(problemSets.likeCount), desc(problemSets.updatedAt), desc(problemSets.setId)]
+    : [desc(problemSets.updatedAt), desc(problemSets.setId)];
+
+  // 1件多く取る。返さずに「次があるか」の判定だけに使う。
   const rows = await db()
     .select(summaryColumns)
     .from(problemSets)
     .innerJoin(users, eq(users.id, problemSets.ownerId))
     .where(and(...conditions))
-    .orderBy(
-      query.sort === "new" ? desc(problemSets.updatedAt) : desc(likeCount),
-      desc(problemSets.updatedAt),
-    );
+    .orderBy(...order)
+    .limit(DISCOVER_PAGE_SIZE + 1);
 
-  // Difficultyの絞り込みは、セットに入っている問題の幅で判定する。
-  // 幅はJOINの集計なのでSQLのWHEREへ持ち込みにくく、取得後に落とす。
-  return rows
-    .map(toSummary)
-    .filter((summary) => matchesDifficulty(summary, query.difficultyMin, query.difficultyMax));
-}
+  const hasMore = rows.length > DISCOVER_PAGE_SIZE;
+  const page = hasMore ? rows.slice(0, DISCOVER_PAGE_SIZE) : rows;
+  const last = page.at(-1);
 
-function matchesDifficulty(
-  summary: ProblemSetSummary,
-  min: number | null,
-  max: number | null,
-): boolean {
-  if (min === null && max === null) return true;
-  const range = summary.difficultyRange;
-  if (range === null) return false;
-  if (min !== null && range.max < min) return false;
-  if (max !== null && range.min > max) return false;
-  return true;
+  return {
+    items: page.map(toSummary),
+    nextCursor:
+      hasMore && last
+        ? encodeCursor({
+            likeCount: byPopularity ? last.likeCount : null,
+            updatedAt: last.updatedAt.toISOString(),
+            setId: last.setId,
+          })
+        : null,
+  };
 }
 
 export async function featured(kind: "new" | "liked"): Promise<ProblemSetSummary[]> {
@@ -197,7 +262,10 @@ export async function featured(kind: "new" | "liked"): Promise<ProblemSetSummary
     .from(problemSets)
     .innerJoin(users, eq(users.id, problemSets.ownerId))
     .where(listableInDiscover)
-    .orderBy(kind === "new" ? desc(problemSets.updatedAt) : desc(likeCount), desc(problemSets.updatedAt))
+    .orderBy(
+      kind === "new" ? desc(problemSets.updatedAt) : desc(problemSets.likeCount),
+      desc(problemSets.updatedAt),
+    )
     .limit(4);
   return rows.map(toSummary);
 }
@@ -236,7 +304,7 @@ export async function getSet(setId: string, viewerId: string | null): Promise<Pr
       updatedAt: problemSets.updatedAt,
       authorName: users.displayName,
       fallbackName: users.name,
-      likeCount,
+      likeCount: problemSets.likeCount,
     })
     .from(problemSets)
     .innerJoin(users, eq(users.id, problemSets.ownerId))

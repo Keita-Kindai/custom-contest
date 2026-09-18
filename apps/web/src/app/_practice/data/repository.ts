@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  DiscoverPage,
   DiscoverQuery,
   LibraryTab,
   ProblemSet,
@@ -20,7 +21,7 @@ import type {
  * ブラウザー内保存はもう使わない。作ったセットはアカウントに残り、別の端末からも開ける。
  */
 export type ProblemSetRepository = {
-  discover(query: DiscoverQuery): Promise<ProblemSetSummary[]>;
+  discover(query: DiscoverQuery): Promise<DiscoverPage>;
   featured(kind: "new" | "liked"): Promise<ProblemSetSummary[]>;
   get(setId: string): Promise<ProblemSet | null>;
   save(input: ProblemSetInput): Promise<ProblemSet>;
@@ -99,6 +100,8 @@ function discoverParams(query: DiscoverQuery): string {
   params.set("sort", query.sort);
   if (query.difficultyMin !== null) params.set("difficultyMin", String(query.difficultyMin));
   if (query.difficultyMax !== null) params.set("difficultyMax", String(query.difficultyMax));
+  // カーソルはserverが返した値をそのまま返す。中身は読まない。
+  if (query.cursor) params.set("cursor", query.cursor);
   return params.toString();
 }
 
@@ -118,7 +121,7 @@ function notify(): void {
 
 export const problemSetRepository: ProblemSetRepository = {
   async discover(query) {
-    return request<ProblemSetSummary[]>(`?${discoverParams(query)}`);
+    return request<DiscoverPage>(`?${discoverParams(query)}`);
   },
 
   async featured(kind) {

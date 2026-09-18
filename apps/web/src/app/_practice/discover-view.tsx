@@ -8,7 +8,9 @@ import {
   orderedTargetBands,
   type BandKey,
   type DiscoverQuery,
+  type DiscoverPage,
   type ProblemSetSort,
+  type ProblemSetSummary,
   type ProblemSetTag,
 } from "@custom-contest/contracts";
 
@@ -30,11 +32,50 @@ export function DiscoverView() {
   const searching = keyword.trim() !== "" || tags.length > 0 || bands.length > 0;
 
   const query = useMemo<DiscoverQuery>(
-    () => ({ q: keyword, tags, bands, sort, difficultyMin: null, difficultyMax: null }),
+    () => ({ q: keyword, tags, bands, sort, difficultyMin: null, difficultyMax: null, cursor: null }),
     [keyword, tags, bands, sort],
   );
 
   const results = usePracticeData(() => problemSetRepository.discover(query), [query]);
+
+  /*
+   * 一覧は1ページずつ届く。最初のページはこれまでどおり`results`が持ち、
+   * 「もっと見る」で足したぶんだけをここに積む。
+   * 検索条件が変わると`results`が入れ替わるので、積んだぶんは捨てる。
+   */
+  const [extra, setExtra] = useState<ProblemSetSummary[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [shownPage, setShownPage] = useState<DiscoverPage | null>(null);
+
+  // 最初のページが差し替わったら、積んだぶんを捨ててカーソルを引き直す。
+  // effectではなく描画中に直すのは、そうしないと古い結果が1度描かれるため。
+  if (results.data !== shownPage) {
+    setShownPage(results.data ?? null);
+    setExtra([]);
+    setCursor(results.data?.nextCursor ?? null);
+  }
+
+  const found = useMemo(
+    () => [...(results.data?.items ?? []), ...extra],
+    [results.data, extra],
+  );
+
+  async function loadMore() {
+    if (!cursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const page = await problemSetRepository.discover({ ...query, cursor });
+      setExtra((current) => [...current, ...page.items]);
+      setCursor(page.nextCursor);
+    } catch {
+      // 続きが読めなくても、既に出ている分は残す。
+      setCursor(null);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
+
   const fresh = usePracticeData(() => problemSetRepository.featured("new"), []);
   const loved = usePracticeData(() => problemSetRepository.featured("liked"), []);
 
@@ -153,7 +194,10 @@ export function DiscoverView() {
           <div className="ps-section-heading">
             <h2>
               {keyword ? `「${keyword}」の検索結果` : "検索結果"}
-              <span className="ps-section-note"> {results.data?.length ?? 0}件</span>
+              <span className="ps-section-note">
+                {" "}
+                {found.length}件{cursor ? "以上" : ""}
+              </span>
             </h2>
             <label className="ps-section-note">
               並び替え{" "}
@@ -173,18 +217,32 @@ export function DiscoverView() {
           </div>
 
           {results.loading && <SetGridSkeleton count={6} variant="featured" />}
-          {!results.loading && (results.data?.length ?? 0) === 0 && (
+          {!results.loading && found.length === 0 && (
             <EmptyState
               title="条件に合う問題セットがありません"
               hint="タグを減らすか、キーワードを短くしてください。"
             />
           )}
-          {!results.loading && (results.data?.length ?? 0) > 0 && (
-            <div className="set-grid is-featured">
-              {results.data?.map((summary) => (
-                <SetCard key={summary.setId} summary={summary} variant="featured" />
-              ))}
-            </div>
+          {!results.loading && found.length > 0 && (
+            <>
+              <div className="set-grid is-featured">
+                {found.map((summary) => (
+                  <SetCard key={summary.setId} summary={summary} variant="featured" />
+                ))}
+              </div>
+              {cursor && (
+                <div className="reaction-row" style={{ justifyContent: "center", marginTop: 16 }}>
+                  <button
+                    className="practice-button"
+                    type="button"
+                    onClick={() => void loadMore()}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? "読み込んでいます…" : "もっと見る"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
       ) : (

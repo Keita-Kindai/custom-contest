@@ -71,6 +71,7 @@ Vercelが最初の候補に挙がったが、Vercelはserverlessであり、proc
 4. Vercelの環境変数へ入れる。`DATABASE_URL`は統合が入れるので手で足さない（二重定義になる）。
 
    ```
+   MIGRATION_DATABASE_URL  DDL権限を持つロールの接続文字列（下記）
    AUTH_SECRET         openssl rand -base64 32 で新規に作る。localhost用とは別の値
    AUTH_GITHUB_ID      本番用AppのClient ID
    AUTH_GITHUB_SECRET  本番用AppのClient secret
@@ -83,6 +84,19 @@ Vercelが最初の候補に挙がったが、Vercelはserverlessであり、proc
    GitHubに登録した値と一致せずログインが失敗する。1行でその失敗を消せるので置いておく。
 
 5. 再デプロイする。`vercel-build`が`db:migrate`と`db:seed-problems`を順に走らせてから`next build`する。
+
+### migrationと実行時でDBロールを分ける
+
+実行時のアプリに要る権限は`SELECT / INSERT / UPDATE / DELETE`だけで、DDLは要らない。1つのロールで
+両方をまかなうと、その接続文字列が漏れたときに`DROP TABLE`まで届く。
+
+`migrate.ts`と`seed-problems.ts`は`MIGRATION_DATABASE_URL`を先に読み、無ければ`DATABASE_URL`へ落ちる。
+ロールを分けていない環境（ローカル、CI、分離前の本番）は今までどおり動き、環境変数を1つ足した時点で
+分離が有効になる。
+
+実行時ロールには`CREATE`を与えない。ただし`ALTER DEFAULT PRIVILEGES`を忘れると、次のmigrationが
+tableを作った瞬間に実行時が`permission denied`で落ちる。設定時ではなく将来のdeployで壊れるので、
+原因から最も遠いところで失敗する。手順は`docs/ops/release-prep-runbook.md`にある。
 
 Googleを足すときは`AUTH_GOOGLE_ID`と`AUTH_GOOGLE_SECRET`を追加して再デプロイするだけでよい。コードの変更は要らない。
 

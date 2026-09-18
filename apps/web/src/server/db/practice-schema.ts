@@ -22,7 +22,7 @@ import { users } from "./auth-schema";
  */
 
 /**
- * AtCoderの問題カタログ。`packages/domain`の固定JSONから流し込む。
+ * AtCoder固定カタログと手動登録の外部リンク。AtCoder分は固定JSONから流し込む。
  *
  * 問題検索はこのtableを読まない。入力のたびに走る最多の処理なので、
  * DBに当てるとNeonのCU-hoursをここで使い切る（ADR-0010）。
@@ -43,9 +43,20 @@ export const problems = pgTable(
     /** 一覧で桁を揃えるための短い出典表記。`ABC300 C`、`EDPC B`など。 */
     source: varchar("source", { length: 32 }).notNull(),
     tags: text("tags").array().notNull().default([]),
+    origin: varchar("origin", { length: 8 }).$type<"atcoder" | "external">().notNull().default("atcoder"),
+    /** 外部問題だけに付くリンク。serverからこのURLへのfetchは行わない。 */
+    externalUrl: text("external_url"),
+    createdByUserId: text("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("problems_difficulty_idx").on(table.difficulty)],
+  (table) => [
+    index("problems_difficulty_idx").on(table.difficulty),
+    unique("problems_external_url_unique").on(table.externalUrl),
+    // 一覧はcreated_atの降順で並べる。updated_atのindexではORDER BYに使えない。
+    index("problems_external_created_idx").on(table.origin, table.createdAt.desc()),
+    index("problems_external_author_idx").on(table.createdByUserId, table.createdAt.desc()),
+  ],
 );
 
 export const problemSets = pgTable(
@@ -58,19 +69,41 @@ export const problemSets = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 60 }).notNull(),
     description: varchar("description", { length: 400 }).notNull().default(""),
-    /** 事前定義の12種から最大6個。CHECK制約はSQL側にある。 */
+    /** 自由入力のセットタグ、最大6個。個数のCHECK制約はSQL側にある。 */
     tags: text("tags").array().$type<ProblemSetTag[]>().notNull().default([]),
     /** 作成者が想定した対象のrating色。押した段だけを持つ。 */
     targetBands: text("target_bands").array().$type<BandKey[]>().notNull().default([]),
     visibility: varchar("visibility", { length: 8 }).$type<Visibility>().notNull(),
     status: varchar("status", { length: 9 }).$type<ProblemSetStatus>().notNull(),
+    /**
+     * いいねの数。`problem_set_likes`のtriggerだけが書く（0007）。
+     *
+     * 数えるのをやめて列にしたのは、既定の並び順が`popular`だからである。
+     * 相関サブクエリのCOUNT(*)で並べ替えると、どのindexも使えず、
+     * 公開セットが増えたぶんだけ一覧が重くなる。
+     */
+    likeCount: integer("like_count").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("problem_sets_tags_idx").using("gin", table.tags),
     index("problem_sets_bands_idx").using("gin", table.targetBands),
-    index("problem_sets_discover_idx").on(table.visibility, table.status, table.updatedAt.desc()),
+    // 並び順をそのままindexへ載せる。末尾のset_idはページ境界の決着用で、
+    // カーソルもこの組で進む。
+    index("problem_sets_popular_idx").on(
+      table.visibility,
+      table.status,
+      table.likeCount.desc(),
+      table.updatedAt.desc(),
+      table.setId.desc(),
+    ),
+    index("problem_sets_recent_idx").on(
+      table.visibility,
+      table.status,
+      table.updatedAt.desc(),
+      table.setId.desc(),
+    ),
     index("problem_sets_owner_idx").on(table.ownerId, table.updatedAt.desc()),
   ],
 );
@@ -91,6 +124,7 @@ export const problemSetItems = pgTable(
     problemId: varchar("problem_id", { length: 64 })
       .notNull()
       .references(() => problems.problemId, { onDelete: "restrict" }),
+    authorBand: varchar("author_band", { length: 6 }).$type<BandKey>(),
   },
   (table) => [
     primaryKey({ columns: [table.setId, table.position] }),

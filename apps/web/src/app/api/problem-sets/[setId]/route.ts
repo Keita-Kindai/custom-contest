@@ -35,7 +35,7 @@ export async function GET(_request: Request, { params }: Params) {
   }
 }
 
-/** 作成と更新。持ち主はsessionから決め、bodyの値は使わない。 */
+/** 更新のみ。持ち主はsessionから決め、bodyの値は使わない。作成は`POST /api/problem-sets`。 */
 export async function PUT(request: Request, { params }: Params) {
   const viewer = await requireViewer();
   if (isErrorResponse(viewer)) return viewer;
@@ -58,8 +58,10 @@ export async function PUT(request: Request, { params }: Params) {
 
   try {
     const owner = await ownerOf(setId);
-    // 既にあるセットは持ち主だけが書ける。無いIDは新規作成として通す。
-    if (owner !== null && owner !== viewer) {
+    // 更新だけを受ける。新規作成は`POST /api/problem-sets`で、IDはserverが決める。
+    // 無いIDをここで作れると、clientが自分でIDを選べることになり、
+    // 限定公開が依存している「推測しにくさ」をserverが保証できなくなる。
+    if (owner !== viewer) {
       return errorResponse("set_not_found", "この問題セットは見つかりませんでした。", null, 404);
     }
 

@@ -15,12 +15,15 @@ import {
   VISIBILITY_HELP,
   VISIBILITY_LABEL,
   difficultyRangeOf,
+  problemSetTagSchema,
+  problemSetCreateSchema,
   problemSetInputSchema,
   visibilitySchema,
   type BandKey,
   type CatalogProblem,
   type ProblemSearchResponse,
   type ProblemSetInput,
+  type ProblemSetItem,
   type ProblemSetTag,
   type Visibility,
 } from "@custom-contest/contracts";
@@ -33,7 +36,7 @@ import {
   TargetBandDots,
 } from "./components/atoms";
 import { PracticeBlocksSkeleton } from "./components/skeletons";
-import { ApiError, newProblemSetId, problemSetRepository } from "./data/repository";
+import { ApiError, problemSetRepository } from "./data/repository";
 
 /** Diff帯のプリセット。検索の絞り込みに使う。 
  * DIFFICULTY_BANDSは @/packages/contracts/src/problem-set.tsにあるもの
@@ -60,6 +63,7 @@ const SECTIONS = [
   { id: "set-tags", label: "タグ" },
   { id: "set-bands", label: "想定者" },
   { id: "set-search", label: "問題検索" },
+  { id: "set-external", label: "外部問題" },
 ] as const;
 
 export function SetEditorView({ setId }: { setId?: string }) {
@@ -68,9 +72,13 @@ export function SetEditorView({ setId }: { setId?: string }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState<ProblemSetTag[]>([]);
+  const [tagDraft, setTagDraft] = useState("");
+  const [addingTag, setAddingTag] = useState(false);
+  const [tagFilter, setTagFilter] = useState("");
+  const [publicTags, setPublicTags] = useState<ProblemSetTag[]>([]);
   const [targetBands, setTargetBands] = useState<BandKey[]>([]);
   const [visibility, setVisibility] = useState<Visibility | null>(null);
-  const [problems, setProblems] = useState<CatalogProblem[]>([]);
+  const [problems, setProblems] = useState<ProblemSetItem[]>([]);
   const [loaded, setLoaded] = useState(setId === undefined);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -93,6 +101,22 @@ export function SetEditorView({ setId }: { setId?: string }) {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const requestId = useRef(0);
+  const [externalTitle, setExternalTitle] = useState("");
+  const [externalUrl, setExternalUrl] = useState("");
+  const [externalTerm, setExternalTerm] = useState("");
+  const [externalResults, setExternalResults] = useState<ProblemSearchResponse | null>(null);
+  const [externalPage, setExternalPage] = useState(1);
+  const [externalBusy, setExternalBusy] = useState(false);
+  const [externalError, setExternalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/problem-sets/tags", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() as Promise<{ tags: string[] }> : Promise.reject())
+      .then((body) => { if (active) setPublicTags(body.tags); })
+      .catch(() => { if (active) setPublicTags([]); });
+    return () => { active = false; };
+  }, []);
 
   // 編集時は既存の内容を初期値にする。
   useEffect(() => {
@@ -147,6 +171,26 @@ export function SetEditorView({ setId }: { setId?: string }) {
     );
   }
 
+  function addCustomTag() {
+    const parsed = problemSetTagSchema.safeParse(tagDraft);
+    if (!parsed.success) {
+      setNotice("タグは制御文字を含まない1〜24文字にしてください。");
+      return;
+    }
+    if (tags.some((tag) => tag.toLocaleLowerCase() === parsed.data.toLocaleLowerCase())) {
+      setNotice("同じタグはすでに追加されています。");
+      return;
+    }
+    if (tags.length >= 6) {
+      setNotice("タグは最大6個です。");
+      return;
+    }
+    setTags((current) => [...current, parsed.data]);
+    setTagDraft("");
+    setAddingTag(false);
+    setNotice(null);
+  }
+
   function toggleBand(key: BandKey) {
     setTargetBands((current) =>
       current.includes(key) ? current.filter((item) => item !== key) : [...current, key],
@@ -160,7 +204,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
       return;
     }
     setNotice(null);
-    setProblems((current) => [...current, problem]);
+    setProblems((current) => [...current, { ...problem, authorBand: null }]);
   }
 
   /**
@@ -177,7 +221,54 @@ export function SetEditorView({ setId }: { setId?: string }) {
         : null,
     );
     if (room <= 0) return;
-    setProblems((current) => [...current, ...fresh.slice(0, room)]);
+    setProblems((current) => [...current, ...fresh.slice(0, room).map((problem) => ({ ...problem, authorBand: null }))]);
+  }
+
+  function chooseAuthorBand(problemId: string, band: BandKey | null) {
+    setProblems((current) => current.map((problem) =>
+      problem.problemId === problemId ? { ...problem, authorBand: band } : problem,
+    ));
+  }
+
+  async function searchExternal(nextPage = externalPage) {
+    setExternalBusy(true);
+    setExternalError(null);
+    try {
+      const params = new URLSearchParams({ q: externalTerm, limit: "20", offset: String((nextPage - 1) * 20) });
+      const response = await fetch(`/api/problems/external?${params}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("外部問題を検索できませんでした。");
+      setExternalResults(await response.json() as ProblemSearchResponse);
+      setExternalPage(nextPage);
+    } catch (error) {
+      setExternalError(error instanceof Error ? error.message : "外部問題を検索できませんでした。");
+    } finally {
+      setExternalBusy(false);
+    }
+  }
+
+  async function registerExternal() {
+    setExternalBusy(true);
+    setExternalError(null);
+    try {
+      const response = await fetch("/api/problems/external", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: externalTitle, url: externalUrl }),
+      });
+      if (!response.ok) {
+        const body = await response.json() as { error?: { message?: string } };
+        throw new Error(body.error?.message ?? "外部問題を登録できませんでした。");
+      }
+      const registered = await response.json() as CatalogProblem;
+      addProblem(registered);
+      setExternalTitle("");
+      setExternalUrl("");
+      await searchExternal(1);
+    } catch (error) {
+      setExternalError(error instanceof Error ? error.message : "外部問題を登録できませんでした。");
+    } finally {
+      setExternalBusy(false);
+    }
   }
 
   function removeProblem(problemId: string) {
@@ -231,8 +322,8 @@ export function SetEditorView({ setId }: { setId?: string }) {
     setSaving(true);
     setAskVisibility(false);
     // 作成者・いいね数・時刻はserverが決めるので送らない。
-    const input: ProblemSetInput = {
-      setId: setId ?? newProblemSetId(),
+    // 新規作成では`setId`も送らない。IDはserverが決め、保存の応答で返る。
+    const draft = {
       title: title.trim(),
       description: description.trim(),
       tags,
@@ -243,14 +334,24 @@ export function SetEditorView({ setId }: { setId?: string }) {
     };
     // 送る前に契約どおりの形かを確かめる。問題数の上限のような制約は、
     // 画面側で防いでいてもここが最後の関門になる。
-    const parsed = problemSetInputSchema.safeParse(input);
-    if (!parsed.success) {
+    // 既にあるセットは更新、まだ無いセットは作成で、送る形も宛先も違う。
+    const send = () => {
+      if (setId) {
+        const parsed = problemSetInputSchema.safeParse({ ...draft, setId });
+        return parsed.success ? problemSetRepository.save(parsed.data) : null;
+      }
+      const parsed = problemSetCreateSchema.safeParse(draft);
+      return parsed.success ? problemSetRepository.create(parsed.data) : null;
+    };
+
+    const pending = send();
+    if (!pending) {
       setSaving(false);
       setNotice("保存できない内容が含まれています。問題数やタイトルの長さを確認してください。");
       return;
     }
     try {
-      const saved = await problemSetRepository.save(parsed.data);
+      const saved = await pending;
       router.push(`/sets/${saved.setId}`);
     } catch (error) {
       setSaving(false);
@@ -333,9 +434,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
               ))}
             </div>
 
-            <p className="ps-field-help">
-              認証がないため、この段階では公開範囲による閲覧制限は実際には効きません。
-            </p>
+            <p className="ps-field-help">公開範囲は保存後の閲覧・Discoverへの掲載に反映されます。</p>
 
             <div className="modal-actions">
               <button className="practice-button is-quiet" type="button" onClick={() => setAskVisibility(false)}>
@@ -383,13 +482,24 @@ export function SetEditorView({ setId }: { setId?: string }) {
           </section>
 
           <section className="create-block" id="set-tags">
-            <h2>タグ（押して有効化）</h2>
+            <h2>セットのタグ</h2>
+            <input className="practice-input" type="search" value={tagFilter} maxLength={24} onChange={(event) => setTagFilter(event.target.value)} placeholder="候補を絞り込む" aria-label="タグ候補を絞り込む" />
             <div className="filter-tags">
-              {PROBLEM_SET_TAGS.map((tag) => (
+              {[...new Set([...tags, ...publicTags, ...PROBLEM_SET_TAGS])]
+                .filter((tag) => tags.includes(tag) || tag.toLocaleLowerCase().includes(tagFilter.normalize("NFKC").trim().toLocaleLowerCase()))
+                .slice(0, 12).map((tag) => (
                 <TagPill key={tag} tag={tag} selected={tags.includes(tag)} onToggle={() => toggleTag(tag)} />
               ))}
+              <button className="tag-pill is-add" type="button" aria-expanded={addingTag} aria-controls="custom-tag-form" onClick={() => setAddingTag((value) => !value)}>＋ タグ</button>
             </div>
-            <p className="ps-field-help">事前に用意したタグから選びます。最大6個。</p>
+            {addingTag && (
+              <form id="custom-tag-form" className="custom-tag-form" onSubmit={(event) => { event.preventDefault(); addCustomTag(); }}>
+                <label className="ps-field-label" htmlFor="custom-tag-input">新しいタグ</label>
+                <input className="practice-input" id="custom-tag-input" value={tagDraft} maxLength={24} onChange={(event) => setTagDraft(event.target.value)} placeholder="例: ICPC 予選" />
+                <button className="practice-button is-small" type="submit">追加</button>
+              </form>
+            )}
+            <p className="ps-field-help">最大6個。公開済みの公開セットで使われたタグも候補に出ます。</p>
           </section>
 
           <section className="create-block" id="set-bands">
@@ -496,6 +606,7 @@ export function SetEditorView({ setId }: { setId?: string }) {
                       problemId={problem.problemId}
                       contestId={problem.contestId}
                       title={problem.title}
+                      url={problem.url}
                     />
                     <span className="problem-source">{problem.source}</span>
                   </span>
@@ -518,6 +629,34 @@ export function SetEditorView({ setId }: { setId?: string }) {
             <div className="search-toolbar is-foot">
               <Pager page={page} pageCount={pageCount} onChange={setPage} />
             </div>
+          </section>
+          <section className="create-block" id="set-external">
+            <h2>外部サイトの問題を追加</h2>
+            <p className="ps-field-help">問題文は保存せず、元サイトへのリンクと題名だけを登録します。登録済みの問題は他の利用者も使えます。</p>
+            <form className="external-problem-form" onSubmit={(event) => { event.preventDefault(); void registerExternal(); }}>
+              <label className="ps-field-label" htmlFor="external-problem-title">問題の題名</label>
+              <input className="practice-input" id="external-problem-title" value={externalTitle} maxLength={120} onChange={(event) => setExternalTitle(event.target.value)} placeholder="例: ICPC Regional Problem A" required />
+              <label className="ps-field-label" htmlFor="external-problem-url">元サイトの HTTPS URL</label>
+              <input className="practice-input" id="external-problem-url" type="url" value={externalUrl} maxLength={2048} onChange={(event) => setExternalUrl(event.target.value)} placeholder="https://example.org/problems/123" required />
+              <button className="practice-button is-primary" type="submit" disabled={externalBusy}>登録してセットに追加</button>
+            </form>
+            <form className="external-search-form" onSubmit={(event) => { event.preventDefault(); void searchExternal(1); }}>
+              <label className="ps-field-label" htmlFor="external-problem-search">登録済みの外部問題を探す</label>
+              <input className="practice-input" id="external-problem-search" type="search" value={externalTerm} maxLength={80} onChange={(event) => setExternalTerm(event.target.value)} placeholder="題名またはサイト名" />
+              <button className="practice-button" type="submit" disabled={externalBusy}>検索</button>
+            </form>
+            {externalError && <p className="practice-notice">{externalError}</p>}
+            {externalResults && <p className="ps-field-help">{externalResults.total}件が一致。{externalPage}ページ目を表示します。</p>}
+            <div className="search-results">
+              {externalResults?.problems.map((problem) => (
+                <div className="search-row" key={problem.problemId}>
+                  <span className="search-row-title"><ProblemTitleLink problemId={problem.problemId} contestId={problem.contestId} title={problem.title} url={problem.url} /><span className="problem-source">{problem.source}</span></span>
+                  <span className="ps-section-note">外部</span>
+                  <button className="practice-button is-small" type="button" disabled={added.has(problem.problemId)} onClick={() => addProblem(problem)}>{added.has(problem.problemId) ? "✓ 追加済み" : "＋ 追加"}</button>
+                </div>
+              ))}
+            </div>
+            {externalResults && <Pager page={externalPage} pageCount={Math.min(51, Math.max(1, Math.ceil(externalResults.total / 20)))} onChange={(next) => void searchExternal(next)} />}
           </section>
         </div>
 
@@ -592,9 +731,18 @@ export function SetEditorView({ setId }: { setId?: string }) {
                       problemId={problem.problemId}
                       contestId={problem.contestId}
                       title={problem.title}
+                      url={problem.url}
                     />
                   </span>
-                  <DifficultyDot difficulty={problem.difficulty} />
+                  {problem.url ? (
+                    <label className="author-band-picker">
+                      <span className="sr-only">{problem.title}の作者設定色</span>
+                      <select className="practice-select is-inline" value={problem.authorBand ?? ""} onChange={(event) => chooseAuthorBand(problem.problemId, event.target.value ? event.target.value as BandKey : null)}>
+                        <option value="">色なし</option>
+                        {DIFFICULTY_BANDS.map((band) => <option key={band.key} value={band.key}>{band.label}</option>)}
+                      </select>
+                    </label>
+                  ) : <DifficultyDot difficulty={problem.difficulty} />}
                   <button
                     className="icon-button is-bare"
                     type="button"

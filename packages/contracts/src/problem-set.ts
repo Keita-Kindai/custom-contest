@@ -18,10 +18,12 @@ export const catalogProblemSchema = z.object({
   /** 一覧で桁を揃えるための短い出典表記。`ABC300 C`、`EDPC B`など。 */
   source: z.string().min(1),
   tags: z.array(z.string()),
+  /** 外部登録問題は元サイトのHTTPS URL。固定AtCoderカタログでは省略。 */
+  url: z.string().url().regex(/^https:\/\//).nullable().optional(),
 });
 export type CatalogProblem = z.infer<typeof catalogProblemSchema>;
 
-/** 押して有効化する事前定義タグ。自由入力は受け付けない。 */
+/** 入力欄の初期候補。利用者はこれ以外も追加できる。 */
 export const PROBLEM_SET_TAGS = [
   "DP",
   "グラフ",
@@ -36,8 +38,24 @@ export const PROBLEM_SET_TAGS = [
   "上級",
   "短時間",
 ] as const;
-export const problemSetTagSchema = z.enum(PROBLEM_SET_TAGS);
+export const problemSetTagSchema = z.string().transform((value, context) => {
+  const normalized = value.normalize("NFKC").trim();
+  if (normalized.length < 1 || normalized.length > 24 || /[\u0000-\u001f\u007f]/u.test(normalized)) {
+    context.addIssue({ code: "custom", message: "タグは制御文字を含まない1〜24文字にしてください。" });
+    return z.NEVER;
+  }
+  return normalized;
+});
 export type ProblemSetTag = z.infer<typeof problemSetTagSchema>;
+
+export const problemSetTagsSchema = z.array(problemSetTagSchema).max(6).superRefine((tags, context) => {
+  const seen = new Set<string>();
+  tags.forEach((tag, index) => {
+    const key = tag.toLocaleLowerCase();
+    if (seen.has(key)) context.addIssue({ code: "custom", path: [index], message: "同じタグを2回追加できません。" });
+    seen.add(key);
+  });
+});
 
 /** 公開範囲。実際のaccess制御はDBと認証の導入まで効かない。 */
 export const visibilitySchema = z.enum(["public", "unlisted", "private"]);
@@ -62,10 +80,6 @@ export type ProblemSetStatus = z.infer<typeof problemSetStatusSchema>;
 
 export const problemSetIdSchema = z.string().regex(/^ps_[0-9a-z]{10}$/);
 
-/** セットに入っている1問。カタログからコピーして保存する。 */
-export const problemSetItemSchema = catalogProblemSchema;
-export type ProblemSetItem = z.infer<typeof problemSetItemSchema>;
-
 /**
  * 1セットに入れられる問題数の上限。
  * 一括追加は1ページ最大100件を返すので、作成画面はこの値で打ち切る必要がある。
@@ -76,11 +90,17 @@ export const MAX_PROBLEMS_PER_SET = 50;
 export const bandKeySchema = z.enum(["gray", "brown", "green", "cyan", "blue", "yellow", "orange", "red"]);
 export type BandKey = z.infer<typeof bandKeySchema>;
 
+/** 難易度の推定は問題の属性ではなく、このセット内の1問への作者の任意設定。 */
+export const problemSetItemSchema = catalogProblemSchema.extend({
+  authorBand: bandKeySchema.nullable().default(null),
+});
+export type ProblemSetItem = z.infer<typeof problemSetItemSchema>;
+
 export const problemSetSchema = z.object({
   setId: problemSetIdSchema,
   title: z.string().trim().min(1).max(60),
   description: z.string().trim().max(400),
-  tags: z.array(problemSetTagSchema).max(6),
+  tags: problemSetTagsSchema,
   visibility: visibilitySchema,
   status: problemSetStatusSchema,
   problems: z.array(problemSetItemSchema).max(MAX_PROBLEMS_PER_SET),
@@ -112,6 +132,16 @@ export const problemSetInputSchema = problemSetSchema.omit({
   updatedAt: true,
 });
 export type ProblemSetInput = z.infer<typeof problemSetInputSchema>;
+
+/**
+ * 新規作成でclientが送ってよい範囲。`setId`を含まない。
+ *
+ * 限定公開は`set_id`が推測しにくいことに依存している。その値をclientが決めると、
+ * 秘密の強さをserverが保証できない。作成時のIDはserverが作る。
+ * 既にあるセットのIDはそのまま使い続ける（URLを変えない）。
+ */
+export const problemSetCreateSchema = problemSetInputSchema.omit({ setId: true });
+export type ProblemSetCreate = z.infer<typeof problemSetCreateSchema>;
 
 /**
  * 一覧のカードが必要とする形。
@@ -153,16 +183,36 @@ export const PROBLEM_SET_SORT_LABEL: Record<ProblemSetSort, string> = {
   new: "新着順",
 };
 
+/**
+ * 1ページの件数。
+ *
+ * 一覧は「全部返す」をやめてカーソルで送る。上限が無いと、公開セットが増えるほど
+ * 1回のrequestが重くなり、未認証で叩けるぶん誰でもその重さを引き出せる。
+ */
+export const DISCOVER_PAGE_SIZE = 24;
+
 export const discoverQuerySchema = z.object({
   q: z.string().trim().max(80).default(""),
-  tags: z.array(problemSetTagSchema).default([]),
+  tags: z.array(problemSetTagSchema).max(6).default([]),
   /** 作成者が選んだ想定者の色。1つでも一致すればそのセットを残す。 */
   bands: z.array(bandKeySchema).max(8).default([]),
   sort: problemSetSortSchema.default("popular"),
   difficultyMin: z.number().int().nullable().default(null),
   difficultyMax: z.number().int().nullable().default(null),
+  /**
+   * 前のページの最後の位置。serverが返した値をそのまま返す。
+   * 中身はserverの都合なので、clientは読まず組み立てもしない。
+   */
+  cursor: z.string().max(256).nullable().default(null),
 });
 export type DiscoverQuery = z.infer<typeof discoverQuerySchema>;
+
+/** Discoverの1ページ。`nextCursor`がnullなら、そこで終わり。 */
+export const discoverPageSchema = z.object({
+  items: z.array(problemSetSummarySchema),
+  nextCursor: z.string().nullable(),
+});
+export type DiscoverPage = z.infer<typeof discoverPageSchema>;
 
 /** ライブラリ（マイページ）のタブ。 */
 export const libraryTabSchema = z.enum(["created", "bookmarked", "liked", "recent"]);
@@ -197,6 +247,19 @@ export const problemSearchResponseSchema = z.object({
   problems: z.array(catalogProblemSchema),
 });
 export type ProblemSearchResponse = z.infer<typeof problemSearchResponseSchema>;
+
+/** 外部問題の登録と明示的な検索。元サイトへserver-side fetchはしない。 */
+export const externalProblemInputSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  url: z.string().trim().url().max(2048),
+});
+export type ExternalProblemInput = z.infer<typeof externalProblemInputSchema>;
+
+export const externalProblemSearchQuerySchema = z.object({
+  q: z.string().trim().max(80).default(""),
+  limit: z.number().int().min(1).max(20).default(10),
+  offset: z.number().int().min(0).max(1000).default(0),
+});
 
 export function difficultyRangeOf(
   problems: readonly ProblemSetItem[],

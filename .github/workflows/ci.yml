@@ -15,9 +15,27 @@ concurrency:
 
 jobs:
   check:
+    # ここのnameが`main`のrulesetで要求するstatus checkの名前になる。変えるとゲートが外れる。
     name: pnpm check
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+
+    # 公開範囲と認可の判定はDBのqueryそのものにある。DBの無いCIではその確認がskipされ、
+    # 「通った」という結果が実際には何も確かめていない状態になる。
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: custom_contest_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
 
     steps:
       - name: Check out repository
@@ -36,5 +54,31 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run repository checks
-        run: pnpm check
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # 統合testは実在するカタログの問題を参照する。migrationだけでは外部キーを満たせない。
+      - name: Prepare the test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/custom_contest_ci
+        run: |
+          pnpm db:migrate
+          pnpm --filter @custom-contest/web db:seed-problems
+
+      # DATABASE_URLはこの段だけに渡す。buildへ渡すと、本来DBを見ないはずの
+      # 生成処理がDBに繋がっても気づけなくなる。
+      - name: Test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/custom_contest_ci
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      # 既知の脆弱性はリリースの判断材料なので、結果を毎回残す。
+      # highとcriticalだけを落とす。lowで無関係のPRまで止めない。
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high

@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { errorResponse } from "@/server/http";
+import { errorResponse, requireSameOrigin } from "@/server/http";
 
 import { DatabaseUnavailableError } from "./queries";
 
@@ -18,6 +18,19 @@ export async function requireViewer(): Promise<string | Response> {
     return errorResponse("unauthorized", "ログインが必要です。", "画面右上からログインしてください。", 401);
   }
   return id;
+}
+
+/**
+ * 書き込みの入口。同一サイトからのrequestであることを確かめてから、ログインを確かめる。
+ *
+ * 順番に意味がある。別サイトからの書き込みは、ログインしているかどうかに関わらず
+ * 受け付けない。先にログインを見ると、未ログインのCSRFに401を返すことになり、
+ * 「ログインすれば通る」と読める応答になる。
+ */
+export async function requireWriter(request: Request): Promise<string | Response> {
+  const sameOrigin = requireSameOrigin(request);
+  if (sameOrigin) return sameOrigin;
+  return requireViewer();
 }
 
 /** 未ログインでも進める処理。閲覧範囲の判定にだけ使う。 */

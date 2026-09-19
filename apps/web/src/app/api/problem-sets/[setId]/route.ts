@@ -11,11 +11,7 @@ import {
   removeSet,
   saveSet,
 } from "@/server/problem-sets/queries";
-import {
-  handleQueryError,
-  optionalViewer,
-  requireViewer,
-} from "@/server/problem-sets/route-helpers";
+import { handleQueryError, optionalViewer, requireWriter } from "@/server/problem-sets/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,7 +36,7 @@ export async function GET(_request: Request, { params }: Params) {
 
 /** 更新のみ。持ち主はsessionから決め、bodyの値は使わない。作成は`POST /api/problem-sets`。 */
 export async function PUT(request: Request, { params }: Params) {
-  const viewer = await requireViewer();
+  const viewer = await requireWriter(request);
   if (isErrorResponse(viewer)) return viewer;
 
   const { setId } = await params;
@@ -89,8 +85,8 @@ export async function PUT(request: Request, { params }: Params) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: Params) {
-  const viewer = await requireViewer();
+export async function DELETE(request: Request, { params }: Params) {
+  const viewer = await requireWriter(request);
   if (isErrorResponse(viewer)) return viewer;
 
   const { setId } = await params;

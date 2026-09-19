@@ -2,7 +2,7 @@ import { solveStatusUpdateSchema } from "@custom-contest/contracts";
 
 import { errorResponse, isErrorResponse, jsonResponse, parseBody } from "@/server/http";
 import { getSet, setSolveStatus, solveStatuses } from "@/server/problem-sets/queries";
-import { handleQueryError, requireViewer } from "@/server/problem-sets/route-helpers";
+import { handleQueryError, requireViewer, requireWriter } from "@/server/problem-sets/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export async function GET(_request: Request, { params }: Params) {
  * セットに入っていない問題は複合外部キーで弾かれるので、ここでは開けるかどうかだけ確かめる。
  */
 export async function PUT(request: Request, { params }: Params) {
-  const viewer = await requireViewer();
+  const viewer = await requireWriter(request);
   if (isErrorResponse(viewer)) return viewer;
 
   const { setId } = await params;

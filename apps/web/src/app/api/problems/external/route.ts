@@ -2,7 +2,7 @@ import { externalProblemInputSchema, externalProblemSearchQuerySchema } from "@c
 
 import { errorResponse, isErrorResponse, jsonResponse, parseBody } from "@/server/http";
 import { ExternalProblemLimitError, normalizeExternalProblemUrl, registerExternalProblem, searchExternalProblems } from "@/server/problem-sets/external-problems";
-import { handleQueryError, requireViewer } from "@/server/problem-sets/route-helpers";
+import { handleQueryError, requireWriter } from "@/server/problem-sets/route-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const viewer = await requireViewer();
+  const viewer = await requireWriter(request);
   if (isErrorResponse(viewer)) return viewer;
   const body = await parseBody(request, externalProblemInputSchema);
   if (isErrorResponse(body)) return body;

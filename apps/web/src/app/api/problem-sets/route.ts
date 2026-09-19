@@ -6,7 +6,7 @@ import {
 } from "@custom-contest/contracts";
 
 import { errorResponse, isErrorResponse, jsonResponse, parseBody } from "@/server/http";
-import { handleQueryError, requireViewer } from "@/server/problem-sets/route-helpers";
+import { handleQueryError, requireWriter } from "@/server/problem-sets/route-helpers";
 import { createSet, discover, existingProblemIds, getSet } from "@/server/problem-sets/queries";
 
 export const runtime = "nodejs";
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
 /** 新規作成。`setId`はserverが決めるので、bodyには含めない。 */
 export async function POST(request: Request) {
-  const viewer = await requireViewer();
+  const viewer = await requireWriter(request);
   if (isErrorResponse(viewer)) return viewer;
 
   const body = await parseBody(request, problemSetCreateSchema);

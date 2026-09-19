@@ -1,53 +1,62 @@
-# Vercel WAFのレート制限（適用手順）
+# 濫用への備え（Vercel WAFで塞げた範囲と、塞げなかった範囲）
 
-A-2で決めた方式の実装仕様です。ルールはVercelのダッシュボードで人が入れます。コードは変わりません。
+A-2で「Vercel WAFのrate limitでやる」と決めましたが、**Hobbyプランではrate limitが使えませんでした**。この文書は、実際に何が入って何が入らなかったか、そのぶんを何で埋めたかを残します。
 
 対象は精進側の公開だけです。AC Duelは別判定なので、対戦系の経路はここでは「閉じたまま安く捨てる」ためだけに扱います。
 
 関連: `docs/ops/release-prep-runbook.md`、ADR-0010、ADR-0011。
 
-## なぜWAFなのか
+## 何が起きたか
 
-アプリの中で数えると、数えるためにFunctionが動きます。無料枠の天井はFunction実行回数とcompute時間なので、濫用されたときに「止めた分だけ課金される」形になります。WAFはアプリへ届く前に落とすので、止めた分は数えられません。
+`Deny`のルールは通りました。`rate_limit`のルールは、超過時の動作が`log`であっても拒否されます。
 
-代わりに、WAFで**できないこと**があります。
+```
+$ vercel firewall rules add --json '{ ... "action": { "mitigate": { "action": "rate_limit", ... } } }'
+Error: Rate limiting is not available for this plan (401)
+```
 
-- **利用者ごとの上限にできない。** WAFが見分けられるのはIPで、ログインした誰かではありません。共有回線の裏に複数人いれば同じIPになりますし、1人が回線を変えれば別IPになります。
-- **アプリの文脈を知らない。** 「このセットの持ち主か」「この人は今日もう20件登録したか」といった判断はできません。
+`vercel firewall status`にも出ています。
 
-したがって次の2つは引き続きアプリ側が持ちます。WAFはその前段です。
+```
+  Firewall        Enabled
+  Bypass          Requires Pro or Enterprise
+  Mitigations     Active
+  Attack Mode     Off
+  Bot Protection  Off
+  OWASP           Off  · requires Security+
+```
 
-- 1人あたりのセット数（`MAX_SETS_PER_USER`）
-- 外部問題の1日20件（`ExternalProblemLimitError`）
+Hobbyで使えるのは、**カスタムルールのDeny**、**自動DDoS緩和（Mitigations）**、**Attack Mode**の3つです。
+
+> **注意。** `writes-30-per-min`という名前のrate limitルールが1本だけ live に残っています。プランが拒否する種類のルールなので、実際に効いているとは限りません。**あると思って設計しないでください。** 消すか、効いているかを実測で確かめるかのどちらかです。
 
 ## 経路ごとの重さ
 
-上限を決める根拠です。数値は実測とコードの読み取りによります。
+上限や cache の長さを決める根拠です。数値は実測とコードの読み取りによります。
 
 | 経路 | 認証 | 1requestあたりの仕事 |
 |---|---|---|
-| `GET /api/problem-sets` | 不要 | DB 1 query。1ページ24件に制限済み |
+| `GET /api/problem-sets` | 不要 | DB 1 query。1ページ24件（`DISCOVER_PAGE_SIZE`） |
 | `GET /api/problems/search` | 不要 | DBを使わない。約4,800問をメモリ上で走査 |
-| `GET /api/problem-sets/tags` | 不要 | 公開セット全体をunnest + GROUP BY。CDNに5分預ける |
+| `GET /api/problem-sets/tags` | 不要 | 公開セット全体をunnest + GROUP BY |
 | `GET /api/problem-sets/featured` | 不要 | DB 1 query、4件 |
 | `GET /api/problem-sets/[setId]` | 任意 | DB 2 query |
 | `GET /api/problem-sets/[setId]/viewer` | 任意 | DB 3 query |
-| `GET /api/problems/external` | 不要 | DB 2 query（`count(*)`と本体） |
+| `GET /api/problems/external` | 不要 | DB 2 query |
 | `POST /api/problem-sets/[setId]/like` | 要 | **DB 約6 query** |
 | `POST /api/problem-sets/[setId]/bookmark` | 要 | DB 約6 query |
-| `POST /api/problem-sets/[setId]/view` | 要 | DB 約3 query |
+| `POST /api/problem-sets/[setId]/view` | 要 | DB 約3 query。**セットを開くたびに自動で飛ぶ** |
+| `PUT /api/problem-sets/[setId]/solve-status` | 要 | DB 約3 query。**1問マークするごとに1本** |
 | `PUT` / `DELETE /api/problem-sets/[setId]` | 要 | DB 複数 + transaction |
 | `POST /api/problems/external` | 要 | DB 3〜4 query |
 | `GET /api/health` | 不要 | DB 2 query |
 | `/api/auth/*` | — | OAuth往復。callbackでsessionを書く |
 
-VercelのNeon poolは`max: 1`（`client.ts`）です。1 instanceが同時に流せるqueryは1本なので、**DB往復の多い経路ほど、同じrequest数でも詰まりやすい**ことに注意してください。いいねの連打が効くのはこのためです。
+VercelのNeon poolは`max: 1`（`client.ts`）です。1 instanceが同時に流せるqueryは1本なので、**DB往復の多い経路ほど、同じrequest数でも詰まりやすい**ことに注意してください。
 
-## 入れるルール
+## 入っているもの
 
-上から順に評価されます。先に当たったものが効きます。
-
-### 1. 公開していない経路は落とす（Deny）
+### 1. 未公開の経路を落とす（Deny・適用済み）
 
 ```
 Path starts with  /api/rooms
@@ -61,92 +70,88 @@ Path starts with  /api/dev
 
 対戦を公開するときはこのルールを外します。外す前にRoom stateの置き場所を決め直すこと（ADR-0010）。
 
-### 2. 書き込み（Rate Limit）
+> `/api/dev/fake-evidence`もここで落ちます。Previewでの手動テストで偽の提出証跡を使うなら、このルールに`environment`条件を足して production 限定にしてください。
 
-```
-Path starts with  /api/problem-sets
-Method is         POST, PUT, DELETE
-→ Rate Limit  30 requests / 60s / IP
-```
+### 2. 未認証で叩ける読み取りをCDNへ預ける（適用済み）
 
-作成・更新・削除・いいね・保存・最近使用がここに入ります。いちばん重い`like`でも、30 req/分ならDB往復は180/分に収まります。
+rate limitの代わりに置いたものです。**同じrequestの連打は、Functionを起動せずにCDNが返します。**
 
-人の操作としては十分です。画面からこの数を超えるのは、連打かスクリプトのときだけです。
+| 経路 | `s-maxage` | 決め方 |
+|---|---|---|
+| `GET /api/problems/search` | 3600秒 | カタログはdeployのあいだ変わらない |
+| `GET /api/problem-sets/tags` | 300秒 | タグの集計は多少古くてよい |
+| `GET /api/problem-sets` | 30秒 | 公開した本人が自分のセットを見つけられない時間を延ばさない |
+| `GET /api/problem-sets/featured` | 30秒 | 同上 |
+| `GET /api/health` | 5秒（成功時のみ） | 失敗を配り続けない |
 
-### 3. 外部問題の登録（Rate Limit）
+効果は掛け算で効きます。300 req/分の連打でも、CDNへ届くのは30秒に1本なので、Functionは2回しか動きません。
 
-```
-Path is     /api/problems/external
-Method is   POST
-→ Rate Limit  10 requests / 60s / IP
-```
+**預けてよいのは「誰が見ても同じ」応答だけです。** `[setId]`、`viewer`、`library`、`counts`は見る人で内容が変わるので預けません。`response-caching.integration.test.ts`がこの線を固定しています。
 
-アプリ側に1日20件の上限があります。これはその上限へ到達するまでの速度を抑えるためのものです。
+### 3. アプリ側の上限（適用済み）
 
-### 4. 未認証で読める経路（Rate Limit）
+WAFはIPしか見ないので、利用者単位の制限はアプリが持ちます。
 
-```
-Path is  /api/problem-sets
-Path is  /api/problems/search
-Path is  /api/problems/external   (GET)
-Path is  /api/problem-sets/tags
-Path is  /api/problem-sets/featured
-→ Rate Limit  120 requests / 60s / IP
-```
+- 1人が持てるセット数（`MAX_SETS_PER_USER = 200`）
+- 1セットの問題数（`MAX_PROBLEMS_PER_SET = 200`）
+- 外部問題の登録は1日20件（`ExternalProblemLimitError`）
+- 別サイトからの書き込みを拒否（`requireSameOrigin`、PR #47）
 
-検索は入力のたびに走るので、この中では最も回数が出ます。120/分はdebounceの効いた入力なら当たりません。
+## 塞げていないもの
 
-`/api/problems/search`はカタログが固定なのでCDNへ預けられます（PR #31）。それが入ればWAFへ届く回数自体が減ります。**#31が未マージのあいだは、この経路が毎回Functionを起動します。**
+**認証済みの1人が、1つのIPから書き込みを連打する経路に上限がありません。**
 
-### 5. 認証の入口（Rate Limit）
+具体的には`like`・`bookmark`・`view`・`solve-status`です。1回あたりDB 3〜6 query、`max: 1`のpoolを通ります。アプリ側の上限は「持てる数」を縛るもので、「速さ」は縛りません。
 
-```
-Path starts with  /api/auth
-→ Rate Limit  20 requests / 60s / IP
-```
+いま許容できている理由は3つです。
 
-OAuthなので総当たりは効きませんが、callbackはsessionを書きます。往復を繰り返すだけでDBへの書き込みを起こせるので、上限を置きます。
+- 招待制ベータで、参加者が誰か分かっている
+- 書き込みはログインを要求するので、濫用者は必ず特定できるアカウントに紐づく
+- Vercelの自動DDoS緩和（Mitigations: Active）が、桁違いの量には反応する
 
-### 6. 監視用（Rate Limit）
+**一般公開の規模になったら、これは足りません。** 塞ぐ手段は3つあります。
 
-```
-Path is  /api/health
-→ Rate Limit  30 requests / 60s / IP
-```
+| 手段 | 費用 | 得られるもの |
+|---|---|---|
+| Vercel Pro | 月20ドル | WAFのrate limit。この文書の元の設計がそのまま入る |
+| Upstash Redis（Vercel Marketplace） | 無料枠あり | **利用者単位**の制限。IPではないのでWAFより正確 |
+| Postgresで数える | 追加費用なし | 1 requestにつきUPSERT 1本。守る対象が6 queryなら割に合う |
 
-毎回`select 1`とmigration確認の2 queryを出します。PR #31が入れば成功時は5秒CDNに載るので、実際にDBへ届く回数はさらに減ります。
+利用者単位で数えたいなら、IPで数えるWAFへ戻るよりUpstashのほうが目的に合います。**Proへ上げるのは、WAFのrate limitだけのためなら急ぎません。**
 
-### 7. 全体の網（Rate Limit）
+## 運用で見るもの
 
-```
-Path starts with  /api
-→ Rate Limit  300 requests / 60s / IP
+Hobbyでも使えるものです。
+
+```bash
+vercel firewall overview
 ```
 
-個別ルールから漏れた経路と、複数経路にまたがる負荷を拾います。
+```bash
+vercel firewall traffic list
+```
 
-## 確認すること
+異常な量を見つけたら、break-glassとしてAttack Modeがあります。**全requestに検証ページを出す**ので、通常運転では使いません。
 
-ダッシュボードで入れる前に。
+```bash
+vercel firewall attack-mode
+```
 
-- **Hobbyプランで使えるルール数と、Rate Limitアクションの可否を確認してください。** ここの7本が上限に収まらない場合は、4と7を残して他を畳んでください。落とす順は、2（書き込み）と1（Deny）を最後まで残す形にします。
-- ルールは**Log**または**Challenge**で1日ほど流してから**Deny**へ上げてください。いきなり遮断すると、想定外の正常な使い方を切ります。
+CDNが効いているかは、同じURLを2回叩いて確かめます。
 
-入れたあとに。
+```bash
+curl -sI "https://custom-problems.vercel.app/api/problem-sets?sort=popular" | grep -i "x-vercel-cache\|age"
+```
 
-- Vercelのfirewall画面で、どのルールが何件当てているかを見てください。**正常な利用で当たっているルールがあれば、上限が低すぎます。**
-- 429が返ったときに画面が壊れないことを確認してください。現在のclientは`ApiError`としてメッセージを出します。
+2回目が`x-vercel-cache: HIT`になり、`age`が増えていれば預かれています。`MISS`が続くなら、応答に`set-cookie`が乗っているか、`cache-control`が上書きされています。
 
-## これで塞がらないもの
+## 負荷試験との関係
 
-WAFはIPで数えるので、次は別の手段が要ります。
+**本番と実AtCoderへは向けないこと**（`docs/ai/working-agreement.md`）。
 
-- **ログインした1人が、回線を変えながら行う濫用。** セット数の上限（PR #45）と外部問題の1日20件がこれを受け持ちます。
-- **分散した多数のIPからの負荷。** Vercelの自動DDoS緩和と、必要ならAttack Modeです。
-- **1requestあたりが重すぎる経路。** 上限を掛ける前に、その経路自体を軽くするほうが効きます。Discoverの一覧がその例でした（PR #44、20,000件で135.6ms → 0.565ms）。
+rate limitが無いので、「上限に当たったとき429が返るか」は試験項目から外れます。代わりに見るのは次の2つです。
 
-## 隔離環境での負荷試験との関係
+- CDNが効いている経路で、連打してもFunction実行回数が増えないこと
+- 書き込みを連打したときに、5xxではなく正常に処理され続けるか、どこで詰まるか
 
-負荷試験はこのルールを**入れた状態**で行ってください。上限に当たったときに、5xxではなく429が返り、画面がそれを説明することまで含めて測ります。
-
-試験の数値目標は runbook にあります。上限到達時の挙動は、そこでの「意図した429」として記録します。
+後者が、いまいちばん分かっていない数字です。

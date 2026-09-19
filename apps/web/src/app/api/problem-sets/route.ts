@@ -19,6 +19,22 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * 一覧は公開かつ公開済みのセットしか返さない。誰が見ても同じ内容なので、CDNへ預けられる。
+ * 預け先のkeyはクエリ文字列を含むので、絞り込みごとに別のcacheになる。
+ *
+ * HobbyプランではWAFのrate limitが使えない（`rules add`が
+ * `Rate limiting is not available for this plan (401)`で落ちる）。未認証で叩ける経路を
+ * 守る手段がここしかないため、同じrequestの連打はCDNで吸わせる。
+ *
+ * 30秒にしてあるのは、公開した本人がDiscoverで自分のセットを見つけられない時間を
+ * それ以上延ばさないため。連打を抑える効果は30秒でも十分に出る。
+ * `stale-while-revalidate`のあいだは古い内容を返しつつ裏で入れ替える。
+ */
+const CACHE_HEADERS = {
+  "cache-control": "public, max-age=0, s-maxage=30, stale-while-revalidate=300",
+};
+
 function optionalInt(value: string | null): number | null {
   if (value === null || value.trim() === "") return null;
   const parsed = Number(value);
@@ -42,7 +58,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    return jsonResponse(await discover(parsed.data));
+    return jsonResponse(await discover(parsed.data), 200, CACHE_HEADERS);
   } catch (error) {
     return handleQueryError(error);
   }

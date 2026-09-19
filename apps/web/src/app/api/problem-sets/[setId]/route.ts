@@ -1,4 +1,7 @@
-import { MAX_PROBLEMS_PER_SET, problemSetInputSchema } from "@custom-contest/contracts";
+import {
+  MAX_PROBLEMS_PER_SET,
+  problemSetInputSchema,
+} from "@custom-contest/contracts";
 
 import { errorResponse, isErrorResponse, jsonResponse, parseBody } from "@/server/http";
 import {

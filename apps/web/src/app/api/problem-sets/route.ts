@@ -1,5 +1,6 @@
 import {
   discoverQuerySchema,
+  MAX_SETS_PER_USER,
   bandKeySchema,
   problemSetCreateSchema,
   problemSetSortSchema,
@@ -7,7 +8,13 @@ import {
 
 import { errorResponse, isErrorResponse, jsonResponse, parseBody } from "@/server/http";
 import { handleQueryError, requireWriter } from "@/server/problem-sets/route-helpers";
-import { createSet, discover, existingProblemIds, getSet } from "@/server/problem-sets/queries";
+import {
+  createSet,
+  discover,
+  existingProblemIds,
+  getSet,
+  setsOwnedBy,
+} from "@/server/problem-sets/queries";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +57,17 @@ export async function POST(request: Request) {
   if (isErrorResponse(body)) return body;
 
   try {
+    // 上限は作成のときだけ見る。更新はセットの数を増やさないので、
+    // 上限に達していても手持ちのセットは編集・公開できる。
+    if ((await setsOwnedBy(viewer)) >= MAX_SETS_PER_USER) {
+      return errorResponse(
+        "quota_exceeded",
+        `作れる問題セットは1人${MAX_SETS_PER_USER}件までです。`,
+        "使っていないセットを削除してから、もう一度お試しください。",
+        409,
+      );
+    }
+
     // カタログにない問題は外部キー違反になる。先に見つけて理由を返す。
     const ids = body.problems.map((problem) => problem.problemId);
     const known = await existingProblemIds(ids);

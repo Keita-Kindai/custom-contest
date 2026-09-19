@@ -86,6 +86,21 @@ export const problemSetIdSchema = z.string().regex(/^ps_[0-9a-z]{10}$/);
  */
 export const MAX_PROBLEMS_PER_SET = 50;
 
+/**
+ * 1人が持てるセットの数。
+ *
+ * 普通に使っているかぎり当たらない数にしてある。ここにあるのは、1アカウントが
+ * 際限なく作れる状態をなくすためで、次の2つを同時に塞ぐ。
+ *
+ * - DBの容量。無料枠には上限があり、捨てアカウント1つで埋められてはいけない。
+ * - タグ候補への押し込み。`/api/problem-sets/tags`は公開セットで使われているタグの
+ *   上位30件を全員に見せる。タグは自由入力なので、同じタグを付けた公開セットを
+ *   大量に作れば、任意の文字列を全員が見る一覧へ載せられる。
+ *
+ * 下書きも非公開も数える。容量を使うことに変わりはない。
+ */
+export const MAX_SETS_PER_USER = 200;
+
 /** 想定者に使うrating色のkey。DIFFICULTY_BANDSと同じ段。 */
 export const bandKeySchema = z.enum(["gray", "brown", "green", "cyan", "blue", "yellow", "orange", "red"]);
 export type BandKey = z.infer<typeof bandKeySchema>;

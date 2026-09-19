@@ -359,6 +359,20 @@ async function listProblems(setId: string): Promise<ProblemSetItem[]> {
   return rows;
 }
 
+/**
+ * この人が持っているセットの数。上限の判定に使う。
+ *
+ * `counts()`のcreatedと同じ数だが、あちらはマイページの4つをまとめて返す。
+ * 上限の判定でその4つを全部数える必要はない。
+ */
+export async function setsOwnedBy(ownerId: string): Promise<number> {
+  const [row] = await db()
+    .select({ total: sql<number>`count(*)::int` })
+    .from(problemSets)
+    .where(eq(problemSets.ownerId, ownerId));
+  return row?.total ?? 0;
+}
+
 /** セットの持ち主。いない場合はnull。 */
 export async function ownerOf(setId: string): Promise<string | null> {
   const [row] = await db()

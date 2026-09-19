@@ -46,6 +46,8 @@ export const apiErrorCodeSchema = z.enum([
   "set_not_found",
   /** このデプロイでは公開していない機能。AC Duelの先送りに使う（ADR-0010）。 */
   "feature_disabled",
+  /** 1人あたりの上限に達した。時間を置いても解消しないので、429ではなく409にする。 */
+  "quota_exceeded",
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 

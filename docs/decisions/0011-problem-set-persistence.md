@@ -202,7 +202,7 @@ CREATE TABLE set_problem_status (
 - **`CHECK (visibility IN ...)`**: Zodと二重になるが、DBは画面を通らない書き込み（migration、手作業のSQL）にも効く唯一の関門である。
 - **`UNIQUE (set_id, problem_id)`**: 同じ問題を1つのセットへ2回入れられない。画面側でも防いでいるが、`set_problem_status`の外部キーがこの一意性を必要とする。
 - **`ON DELETE RESTRICT`（`problems`）**: カタログから問題を消すとき、その問題を使っているセットがあれば止める。黙って穴が空くより気づける。
-- **50問の上限はDBに置かない**。`cardinality`のようなCHECKでは行数を数えられず、トリガが要る。トリガ1つのために運用が複雑になるので、`problemSetSchema`（`.max(50)`）と保存前の検証で守る。
+- **1セットの問題数の上限はDBに置かない**。`cardinality`のようなCHECKでは行数を数えられず、トリガが要る。トリガ1つのために運用が複雑になるので、`problemSetSchema`（`.max(MAX_PROBLEMS_PER_SET)`）と保存前の検証で守る。
 
 ### `unsolved`の扱い
 

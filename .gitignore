@@ -7,9 +7,11 @@ test-results/
 playwright-report/
 *.tsbuildinfo
 
-.env
-.env.local
-.env.*.local
+# 値の入るファイルは名前を問わず追う。`vercel env pull`は`.env.local`へ平文で書き出し、
+# 環境ごとに`.env.production`のような名前も増える。個別に列挙すると取りこぼす。
+# 打ち消しは後ろに置くこと。gitignoreは後の行が勝つので、順序を入れ替えると
+# `.env.example`まで無視され、新しく足したときに黙って追跡されなくなる。
+.env*
 !.env.example
 
 .DS_Store
@@ -19,3 +21,7 @@ playwright-report/
 .agents/skills/
 .hallmark/
 memo.md
+
+# `vercel link`が作る。projectIdとorgIdが入るだけだが、手元の紐づけであって
+# repositoryの設定ではない。
+.vercel/

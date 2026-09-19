@@ -22,7 +22,7 @@ import {
 
 import { fakeEvidenceEnabled } from "@/server/feature-gate";
 
-import { saveStoredMatch, storedMatchFromState } from "../db/matches";
+import { maybeDeleteExpiredMatches, saveStoredMatch, storedMatchFromState } from "../db/matches";
 
 type StoreGlobal = typeof globalThis & { __customContestRoomStore?: RoomStore };
 
@@ -113,6 +113,8 @@ export async function advanceAndPersist(room: RoomState, now = Date.now()): Prom
     try {
       await saveStoredMatch(storedMatchFromState(room, match));
       markPersisted(room, match.matchId, Date.now());
+      // 保存期間の掃除はMatchを書くこの経路で行う。未認証で叩ける`/api/health`からは起こさない。
+      await maybeDeleteExpiredMatches(now);
     } catch {
       match.persistence.lastError = "PostgreSQLへ結果を保存できませんでした。自動的に再試行します。";
     } finally {

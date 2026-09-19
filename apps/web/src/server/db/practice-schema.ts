@@ -110,7 +110,7 @@ export const problemSets = pgTable(
 
 /**
  * セットに入っている問題と、その並び順。
- * 1セット50問の上限はDBに置かない。行数のCHECKにはトリガが要るため、
+ * 1セットの問題数の上限（`MAX_PROBLEMS_PER_SET`）はDBに置かない。行数のCHECKにはトリガが要るため、
  * `problemSetSchema`と保存前の検証で守る。
  */
 export const problemSetItems = pgTable(

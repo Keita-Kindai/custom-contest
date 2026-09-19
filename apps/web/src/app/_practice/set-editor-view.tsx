@@ -22,7 +22,6 @@ import {
   type BandKey,
   type CatalogProblem,
   type ProblemSearchResponse,
-  type ProblemSetInput,
   type ProblemSetItem,
   type ProblemSetTag,
   type Visibility,
@@ -209,18 +208,22 @@ export function SetEditorView({ setId }: { setId?: string }) {
 
   /**
    * 表示中のページのうち、まだ入っていないものをまとめて入れる。
-   * 1ページは最大100件だが、セットの上限は`MAX_PROBLEMS_PER_SET`問なので、そこで打ち切る。
+   * 1ページは最大100件で、セットの上限はそれより大きいので、上限まで埋めるには
+   * ページを跨いで何度か押すことになる。残り枠より多いぶんは黙って捨てず、いくつ入ったかを返す。
    */
   function addPage() {
     const known = new Set(problems.map((item) => item.problemId));
     const fresh = (results?.problems ?? []).filter((problem) => !known.has(problem.problemId));
     const room = MAX_PROBLEMS_PER_SET - problems.length;
+    if (room <= 0) {
+      setNotice(`1セットに入れられるのは${MAX_PROBLEMS_PER_SET}問までです。これ以上は追加できません。`);
+      return;
+    }
     setNotice(
       fresh.length > room
         ? `1セットに入れられるのは${MAX_PROBLEMS_PER_SET}問までです。${room}問だけ追加しました。`
         : null,
     );
-    if (room <= 0) return;
     setProblems((current) => [...current, ...fresh.slice(0, room).map((problem) => ({ ...problem, authorBand: null }))]);
   }
 

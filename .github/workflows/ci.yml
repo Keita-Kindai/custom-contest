@@ -22,9 +22,13 @@ jobs:
 
     # 公開範囲と認可の判定はDBのqueryそのものにある。DBの無いCIではその確認がskipされ、
     # 「通った」という結果が実際には何も確かめていない状態になる。
+    #
+    # 版は本番（Neon）に合わせる。ここが本番より古いと、CIが通る範囲のほうが
+    # 狭くなり、差のぶんは誰も試していないことになる。
+    # 確認: `pg_dump`の出力ヘッダに`Dumped from database version`が入っている。
     services:
       postgres:
-        image: postgres:17-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
